@@ -1,6 +1,6 @@
 workflows:
   ios-unsigned:
-    name: 每餐 · iOS 自签安装包
+    name: 每餐
     instance_type: mac_mini_m2
     environment:
       flutter: stable
