@@ -1,0 +1,59 @@
+workflows:
+  ios-simulator-preview:
+    name: 每餐 · iOS 模拟器预览
+    instance_type: mac_mini_m2
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: 获取依赖
+        script: flutter pub get
+      - name: 检查
+        script: flutter analyze && flutter test
+      - name: 构建模拟器版本
+        script: flutter build ios --simulator --debug --no-codesign
+      - name: 打包预览产物
+        script: |
+          mkdir -p build/preview
+          cd build/ios/iphonesimulator
+          zip -r ../../preview/MeiCan-iOS-Simulator.zip Runner.app
+    artifacts:
+      - build/preview/MeiCan-iOS-Simulator.zip
+
+  ios-release:
+    name: 每餐 · iOS Release
+    instance_type: mac_mini_m2
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.neilsondou.meican
+    scripts:
+      - name: 获取依赖
+        script: flutter pub get
+      - name: 检查
+        script: flutter analyze && flutter test
+      - name: 配置签名
+        script: xcode-project use-profiles
+      - name: 构建 IPA
+        script: flutter build ipa --release
+    artifacts:
+      - build/ios/ipa/*.ipa
+
+  android-release:
+    name: 每餐 · Android APK
+    instance_type: linux_x2
+    environment:
+      flutter: stable
+    scripts:
+      - name: 获取依赖
+        script: flutter pub get
+      - name: 检查
+        script: flutter analyze && flutter test
+      - name: 构建 APK
+        script: flutter build apk --release
+    artifacts:
+      - build/app/outputs/flutter-apk/app-release.apk

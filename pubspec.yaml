@@ -1,0 +1,42 @@
+name: meican
+description: 每餐 — 简单记录饮食、热量与体重趋势。
+publish_to: none
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  shared_preferences: ^2.5.6
+  image_picker: ^1.2.4
+  http: ^1.6.0
+  intl: ^0.20.2
+  pdf: ^3.13.1
+  printing: ^5.15.1
+  share_plus: ^13.3.1
+  liquid_glass_easy: ^5.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: icons/ios/AppIcon.appiconset/icon-1024.png
+  remove_alpha_ios: true
+  web:
+    generate: true
+    image_path: icons/ios/AppIcon.appiconset/icon-1024.png
+    background_color: "#F7F5F0"
+    theme_color: "#667A68"
+
+flutter:
+  uses-material-design: true
