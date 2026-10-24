@@ -35,19 +35,18 @@ flutter test
 
 ## Codemagic 构建
 
-仓库根目录的 `codemagic.yaml` 包含三个工作流：
+仓库根目录的 `codemagic.yaml` 包含两个工作流：
 
 | 工作流 | 说明 |
 | --- | --- |
-| `ios-simulator-preview` | 无需签名，构建 iOS 模拟器版本，产出 `MeiCan-iOS-Simulator.zip` |
-| `ios-release` | 构建签名 IPA，需在 Codemagic 中配置 App Store 签名 |
+| `ios-unsigned` | 无需 Apple 签名，构建真机 Release，产出未签名 `MeiCan-iOS-unsigned.ipa` |
 | `android-release` | 构建 Android Release APK |
 
-iOS 正式包要求：
+iOS 自签安装：
 
-1. 在 Codemagic 中把本仓库添加为应用
-2. 在 Team settings → Code signing identities 中上传 iOS 证书与描述文件，或在 App Store Connect 集成中配置 API Key
-3. Bundle ID 为 `com.neilsondou.meican`
-4. 选择 `ios-release` 工作流开始构建，产物为 `build/ios/ipa/*.ipa`
+1. 在 Codemagic 中把本仓库添加为应用，并选择使用仓库里的 `codemagic.yaml`
+2. 选择 `ios-unsigned` 工作流，开始构建
+3. 从 Artifacts 下载 `MeiCan-iOS-unsigned.ipa`
+4. 用 AltStore、Sideloadly 或你自己的证书签名后安装到 iPhone
 
-签名未配置前，可先选择 `ios-simulator-preview` 验证 iOS 编译。
+Codemagic 只负责产出未签名 IPA，不需要配置 Apple 开发者证书或描述文件；IPA 必须先自签才能安装。
