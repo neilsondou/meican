@@ -131,6 +131,24 @@
   </div>
   <noscript>需要启用 JavaScript 才能使用每餐。</noscript>
   <script>
+    // 高 DPR 手机上 CanvasKit 的填充开销会随像素数平方增长；限制到 2x
+    // 能明显减轻点击和动画的掉帧，画面尺寸与布局不变。
+    (function () {
+      var ua = navigator.userAgent || '';
+      var isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
+      var ratio = window.devicePixelRatio || 1;
+      if (isMobile && ratio > 2) {
+        try {
+          Object.defineProperty(window, 'devicePixelRatio', {
+            configurable: true,
+            get: function () {
+              return 2;
+            },
+          });
+        } catch (error) {}
+      }
+    })();
+
     (function () {
       var splash = document.getElementById('meican-splash');
       function dismiss() {

@@ -496,27 +496,29 @@ class _DaySummaryCard extends StatelessWidget {
                 fit: StackFit.expand,
                 children: [
                   const ColoredBox(color: AppColors.surfaceMuted),
-                  TweenAnimationBuilder<double>(
-                    tween: Tween(begin: 0, end: ratio),
-                    duration: reduceMotion
-                        ? Duration.zero
-                        : const Duration(milliseconds: 560),
-                    curve: Curves.easeOutCubic,
-                    builder: (context, value, _) => Align(
-                      alignment: Alignment.centerLeft,
-                      widthFactor: value,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: over
-                                ? const [Color(0xFFD9A77A), AppColors.warning]
-                                : const [
-                                    Color(0xFF8FA98F),
-                                    AppColors.accentDeep,
-                                  ],
+                  RepaintBoundary(
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: ratio),
+                      duration: reduceMotion
+                          ? Duration.zero
+                          : const Duration(milliseconds: 560),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, value, _) => Align(
+                        alignment: Alignment.centerLeft,
+                        widthFactor: value,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: over
+                                  ? const [Color(0xFFD9A77A), AppColors.warning]
+                                  : const [
+                                      Color(0xFF8FA98F),
+                                      AppColors.accentDeep,
+                                    ],
+                            ),
                           ),
+                          child: const SizedBox.expand(),
                         ),
-                        child: const SizedBox.expand(),
                       ),
                     ),
                   ),

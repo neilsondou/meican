@@ -220,9 +220,9 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   static const String _webStorageNoticeKey = 'meican_web_storage_notice_v2';
 
-  int index = 0;
+  final ValueNotifier<int> _index = ValueNotifier<int>(0);
   late final PageController _pageController = PageController(
-    initialPage: index,
+    initialPage: _index.value,
   );
 
   @override
@@ -257,9 +257,9 @@ class _AppShellState extends State<AppShell> {
   }
 
   void select(int value) {
-    if (value == index) return;
+    if (value == _index.value) return;
     HapticFeedback.selectionClick();
-    setState(() => index = value);
+    _index.value = value;
     if (MediaQuery.disableAnimationsOf(context)) {
       _pageController.jumpToPage(value);
     } else {
@@ -281,6 +281,7 @@ class _AppShellState extends State<AppShell> {
 
   @override
   void dispose() {
+    _index.dispose();
     _pageController.dispose();
     super.dispose();
   }
@@ -344,7 +345,11 @@ class _AppShellState extends State<AppShell> {
               top: false,
               minimum: const EdgeInsets.only(bottom: 8),
               child: Center(
-                child: _FloatingTabBar(index: index, onChanged: select),
+                child: ValueListenableBuilder<int>(
+                  valueListenable: _index,
+                  builder: (context, index, _) =>
+                      _FloatingTabBar(index: index, onChanged: select),
+                ),
               ),
             ),
           ),
@@ -477,7 +482,7 @@ class _KeepAlivePageState extends State<_KeepAlivePage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return widget.child;
+    return RepaintBoundary(child: widget.child);
   }
 }
 

@@ -87,7 +87,7 @@ class _PressableState extends State<Pressable> {
             opacity: _pressed ? widget.opacity : 1,
             duration: duration,
             curve: Curves.easeOutCubic,
-            child: widget.child,
+            child: RepaintBoundary(child: widget.child),
           ),
         ),
       ),
@@ -972,17 +972,19 @@ class AnimatedNumber extends StatelessWidget {
       duration: reduceMotion ? Duration.zero : duration,
       curve: Curves.easeOutCubic,
       builder: (context, animated, _) {
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
-          children: [
-            Text(formatCalories(animated), style: style),
-            if (suffix != null) ...[
-              const SizedBox(width: 6),
-              Text(suffix!, style: suffixStyle),
+        return RepaintBoundary(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(formatCalories(animated), style: style),
+              if (suffix != null) ...[
+                const SizedBox(width: 6),
+                Text(suffix!, style: suffixStyle),
+              ],
             ],
-          ],
+          ),
         );
       },
     );
@@ -1064,7 +1066,7 @@ class _RevealState extends State<Reveal> with SingleTickerProviderStateMixin {
           offset: Offset(0, widget.offset * (1 - animation.value)),
           child: child,
         ),
-        child: widget.child,
+        child: RepaintBoundary(child: widget.child),
       ),
     );
   }
@@ -1199,7 +1201,7 @@ Route<T> appSlideUpRoute<T>({required WidgetBuilder builder}) {
         ).animate(curved),
         child: FadeTransition(
           opacity: Tween<double>(begin: 0.72, end: 1).animate(curved),
-          child: child,
+          child: RepaintBoundary(child: child),
         ),
       );
     },
@@ -1275,14 +1277,16 @@ class _GlassSheet extends StatelessWidget {
         ),
       ),
     );
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(AppRadius.sheet),
-      child: kIsWeb
-          ? content
-          : BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
-              child: content,
-            ),
+    return RepaintBoundary(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadius.sheet),
+        child: kIsWeb
+            ? content
+            : BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+                child: content,
+              ),
+      ),
     );
   }
 }
@@ -1460,7 +1464,7 @@ Future<bool> showConfirmDialog(
         opacity: curved,
         child: ScaleTransition(
           scale: Tween<double>(begin: 0.96, end: 1).animate(curved),
-          child: child,
+          child: RepaintBoundary(child: child),
         ),
       );
     },
@@ -1709,27 +1713,29 @@ class _ToastBubble extends StatelessWidget {
           ),
         );
       },
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(22),
-          boxShadow: kIsWeb
-              ? null
-              : const [
-                  BoxShadow(
-                    color: Color(0x73000000),
-                    blurRadius: 30,
-                    offset: Offset(0, 14),
+      child: RepaintBoundary(
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(22),
+            boxShadow: kIsWeb
+                ? null
+                : const [
+                    BoxShadow(
+                      color: Color(0x73000000),
+                      blurRadius: 30,
+                      offset: Offset(0, 14),
+                    ),
+                  ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(22),
+            child: kIsWeb
+                ? bubble
+                : BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 26, sigmaY: 26),
+                    child: bubble,
                   ),
-                ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(22),
-          child: kIsWeb
-              ? bubble
-              : BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 26, sigmaY: 26),
-                  child: bubble,
-                ),
+          ),
         ),
       ),
     );

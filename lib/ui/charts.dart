@@ -30,11 +30,13 @@ class WeightTrendChart extends StatelessWidget {
             : const Duration(milliseconds: 900),
         curve: Curves.easeOutCubic,
         builder: (context, progress, _) {
-          return CustomPaint(
-            painter: _WeightPainter(
-              entries: entries,
-              target: target,
-              progress: progress,
+          return RepaintBoundary(
+            child: CustomPaint(
+              painter: _WeightPainter(
+                entries: entries,
+                target: target,
+                progress: progress,
+              ),
             ),
           );
         },
@@ -220,8 +222,10 @@ class BodyFatTrendChart extends StatelessWidget {
             : const Duration(milliseconds: 800),
         curve: Curves.easeOutCubic,
         builder: (context, progress, _) {
-          return CustomPaint(
-            painter: _BodyFatPainter(values: values, progress: progress),
+          return RepaintBoundary(
+            child: CustomPaint(
+              painter: _BodyFatPainter(values: values, progress: progress),
+            ),
           );
         },
       ),
@@ -370,11 +374,13 @@ class IntakeWeekChart extends StatelessWidget {
                 ? Duration.zero
                 : const Duration(milliseconds: 760),
             curve: Curves.easeOutCubic,
-            builder: (context, progress, _) => CustomPaint(
-              painter: _IntakePainter(
-                days: days,
-                tdee: tdee,
-                progress: progress,
+            builder: (context, progress, _) => RepaintBoundary(
+              child: CustomPaint(
+                painter: _IntakePainter(
+                  days: days,
+                  tdee: tdee,
+                  progress: progress,
+                ),
               ),
             ),
           ),
