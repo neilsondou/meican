@@ -167,11 +167,13 @@ enum WeightUnit {
 
   const WeightUnit(this.symbol, this.label);
 
+  /// 存储与接口使用的英文缩写，界面上统一显示 [label]。
   final String symbol;
   final String label;
 
   static WeightUnit fromStorage(Object? value) {
-    return value == grams.symbol ? grams : kilograms;
+    final text = value is String ? value.trim().toLowerCase() : '';
+    return text == 'g' || text == '克' ? grams : kilograms;
   }
 
   double toDisplay(double kg) => this == grams ? kg * 1000 : kg;
@@ -192,7 +194,7 @@ enum WeightUnit {
         : rounded.toStringAsFixed(1);
   }
 
-  String format(double kg) => '${formatValue(kg)} $symbol';
+  String format(double kg) => '${formatValue(kg)} $label';
 }
 
 class UserProfile {

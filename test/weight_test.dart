@@ -15,7 +15,8 @@ void main() {
     expect(WeightUnit.kilograms.formatValue(65.0), '65');
     expect(WeightUnit.kilograms.formatValue(65.24), '65.2');
     expect(WeightUnit.grams.formatValue(65.2), '65200');
-    expect(WeightUnit.grams.format(65.2), '65200 g');
+    expect(WeightUnit.grams.format(65.2), '65200 克');
+    expect(WeightUnit.kilograms.format(65.2), '65.2 公斤');
     expect(WeightUnit.kilograms.displayInput(65.24), 65.2);
     expect(WeightUnit.grams.displayInput(65.24), 65240);
   });

@@ -284,14 +284,14 @@ class _WeightImportSheetState extends State<WeightImportSheet> {
             if (selectedUnit == null) ...[
               const SizedBox(height: 12),
               const _MessageBox(
-                message: '截图里没有写明单位。请先选择这些数字是 kg 还是 g，避免把 65.2 kg 当成 65.2 g。',
+                message: '截图里没有写明单位。请先选择这些数字是公斤还是克，避免把 65.2 公斤当成 65.2 克。',
                 warning: true,
               ),
             ] else if (invalidRecords.isNotEmpty) ...[
               const SizedBox(height: 12),
               _MessageBox(
                 message:
-                    '按 ${selectedUnit!.symbol} 换算后，有 ${invalidRecords.length} 条不在 25–400 kg 的合理范围内。请核对单位或取消勾选这些记录。',
+                    '按${selectedUnit!.label}换算后，有 ${invalidRecords.length} 条不在 25–400 公斤的合理范围内。请核对单位或取消勾选这些记录。',
                 warning: true,
               ),
             ],
@@ -460,7 +460,7 @@ class _UnitSelector extends StatelessWidget {
             for (final unit in WeightUnit.values) ...[
               if (unit != WeightUnit.values.first) const SizedBox(width: 8),
               ChoicePill(
-                label: '${unit.symbol}（${unit.label}）',
+                label: unit.label,
                 selected: selectedUnit == unit,
                 onTap: () => onChanged(unit),
               ),
@@ -471,7 +471,7 @@ class _UnitSelector extends StatelessWidget {
         Text(
           ambiguous
               ? '截图没有给出单位，需要你确认后才能导入。'
-              : '识别为 ${inferredUnit!.symbol}，如果截图实际不是这个单位，可以直接切换。',
+              : '识别为${inferredUnit!.label}，如果截图实际不是这个单位，可以直接切换。',
           style: TextStyle(
             fontSize: 11.5,
             height: 1.55,
@@ -501,12 +501,12 @@ class _RecordRow extends StatelessWidget {
   final VoidCallback onTap;
 
   String _rawValue(WeightUnit? unit) {
-    if (unit == WeightUnit.grams) return '${record.value.round()} g';
+    if (unit == WeightUnit.grams) return '${record.value.round()} 克';
     final rounded = (record.value * 10).roundToDouble() / 10;
     final text = rounded == rounded.roundToDouble()
         ? rounded.toInt().toString()
         : rounded.toStringAsFixed(1);
-    return unit == WeightUnit.kilograms ? '$text kg' : text;
+    return unit == WeightUnit.kilograms ? '$text 公斤' : text;
   }
 
   @override

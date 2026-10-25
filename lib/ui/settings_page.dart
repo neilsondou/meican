@@ -103,8 +103,8 @@ class _SettingsPageState extends State<SettingsPage> {
                 width: 132,
                 child: PillSegmented<WeightUnit>(
                   options: const [
-                    SegmentedOption(value: WeightUnit.kilograms, label: 'kg'),
-                    SegmentedOption(value: WeightUnit.grams, label: 'g'),
+                    SegmentedOption(value: WeightUnit.kilograms, label: '公斤'),
+                    SegmentedOption(value: WeightUnit.grams, label: '克'),
                   ],
                   value: state.profile.weightUnit,
                   onChanged: _setWeightUnit,
@@ -204,10 +204,7 @@ class _SettingsPageState extends State<SettingsPage> {
       widget.state.profile.copyWith(weightUnit: unit),
     );
     if (mounted) {
-      showAppMessage(
-        context,
-        unit == WeightUnit.kilograms ? '体重已切换为 kg' : '体重已切换为 g',
-      );
+      showAppMessage(context, '体重已切换为${unit.label}');
     }
   }
 }
@@ -284,9 +281,9 @@ class _ProfileCard extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(left: 6, bottom: 4),
                 child: Text(
-                  unit.symbol,
+                  unit.label,
                   style: const TextStyle(
-                    fontSize: 15,
+                    fontSize: 14,
                     fontWeight: FontWeight.w500,
                     color: AppColors.secondary,
                   ),
@@ -519,7 +516,7 @@ class _ProfileSheetState extends State<ProfileSheet> {
                   ),
                   decoration: InputDecoration(
                     labelText: '体重',
-                    suffixText: unit.symbol,
+                    suffixText: unit.label,
                   ),
                 ),
               ),
@@ -547,7 +544,7 @@ class _ProfileSheetState extends State<ProfileSheet> {
                   ),
                   decoration: InputDecoration(
                     labelText: '目标体重',
-                    suffixText: unit.symbol,
+                    suffixText: unit.label,
                   ),
                 ),
               ),

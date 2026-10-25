@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../app_state.dart';
+import '../glm_service.dart';
 import '../models.dart';
 import 'charts.dart';
 import 'components.dart';
@@ -91,6 +94,8 @@ class ProgressPage extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               _BodyFatCard(state: state, entries: weights, current: current),
+              const SizedBox(height: 16),
+              _AiAdviceCard(state: state),
               const SizedBox(height: 42),
               const SectionHeader(title: '最近七天'),
               _IntakeCard(
@@ -212,9 +217,9 @@ class _WeightCard extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(left: 7, bottom: 4),
                 child: Text(
-                  unit.symbol,
+                  unit.label,
                   style: const TextStyle(
-                    fontSize: 15,
+                    fontSize: 14,
                     fontWeight: FontWeight.w500,
                     color: AppColors.secondary,
                   ),
@@ -482,7 +487,7 @@ class _PredictionCard extends StatelessWidget {
               ],
               const SizedBox(height: 14),
               const Text(
-                '按 1 kg 脂肪约 7700 大卡估算，只用来观察长期趋势。',
+                '按每公斤脂肪约 7700 大卡估算，只用来观察长期趋势。',
                 style: TextStyle(
                   fontSize: 11,
                   height: 1.55,
@@ -674,6 +679,260 @@ class _BodyFatCard extends StatelessWidget {
           const SizedBox(height: 14),
           const Text(
             '按身高、年龄、性别和当前体重自动估算，只适合观察长期方向，不能替代体脂秤或医学检测。',
+            style: TextStyle(
+              fontSize: 11,
+              height: 1.6,
+              color: AppColors.tertiary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AiAdviceCard extends StatefulWidget {
+  const _AiAdviceCard({required this.state});
+
+  final AppState state;
+
+  @override
+  State<_AiAdviceCard> createState() => _AiAdviceCardState();
+}
+
+class _AiAdviceCardState extends State<_AiAdviceCard> {
+  static const int _cooldownSeconds = 10;
+
+  final GlmService _service = GlmService();
+  bool _loading = false;
+  String? _advice;
+  String? _error;
+  int _cooldown = 0;
+  Timer? _cooldownTimer;
+
+  bool get _canGenerate => !_loading && _cooldown == 0;
+
+  @override
+  void dispose() {
+    _cooldownTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _generate() async {
+    if (!_canGenerate) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final advice = await _service.advise(data: _buildPayload());
+      if (!mounted) return;
+      setState(() {
+        _advice = advice.isEmpty ? '这次没有生成有效建议，请稍后再试。' : advice;
+      });
+    } on GlmException catch (error) {
+      if (mounted) setState(() => _error = error.message);
+    } catch (_) {
+      if (mounted) setState(() => _error = 'AI 建议暂时不可用，请稍后重试。');
+    } finally {
+      if (mounted) {
+        setState(() => _loading = false);
+        _startCooldown();
+      }
+    }
+  }
+
+  void _startCooldown() {
+    _cooldownTimer?.cancel();
+    setState(() => _cooldown = _cooldownSeconds);
+    _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() {
+        _cooldown -= 1;
+        if (_cooldown <= 0) {
+          _cooldown = 0;
+          timer.cancel();
+        }
+      });
+    });
+  }
+
+  Map<String, Object?> _buildPayload() {
+    final state = widget.state;
+    final profile = state.profile;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final cutoff = today.subtract(const Duration(days: 29));
+    final recentWeights = state.sortedWeights
+        .where((entry) => !entry.date.isBefore(cutoff))
+        .toList();
+    final recentMeals =
+        state.meals.where((meal) => !meal.date.isBefore(cutoff)).toList()
+          ..sort((first, second) => first.date.compareTo(second.date));
+
+    final mealsByDay = <String, Map<String, Object?>>{};
+    for (final meal in recentMeals) {
+      final date = DateFormat('yyyy-MM-dd').format(meal.date);
+      final day = mealsByDay.putIfAbsent(
+        date,
+        () => {'日期': date, '总热量kcal': 0, '餐次': <Map<String, Object?>>[]},
+      );
+      final mealData = <String, Object?>{
+        '餐次': meal.mealType,
+        '热量kcal': meal.totalKcal.round(),
+        if (meal.items.isNotEmpty)
+          '食物': [
+            for (final item in meal.items)
+              {'名称': item.name, '克数': item.grams, '热量kcal': item.kcal.round()},
+          ],
+        if (meal.note.trim().isNotEmpty) '备注': meal.note.trim(),
+      };
+      (day['餐次'] as List<Map<String, Object?>>).add(mealData);
+      day['总热量kcal'] = (day['总热量kcal'] as int) + meal.totalKcal.round();
+    }
+
+    var recordedDays = 0;
+    var intakeTotal = 0.0;
+    for (var offset = 0; offset < 7; offset++) {
+      final day = today.subtract(Duration(days: offset));
+      final meals = state.mealsForDay(day);
+      if (meals.isEmpty) continue;
+      recordedDays++;
+      intakeTotal += meals.fold<double>(0, (sum, meal) => sum + meal.totalKcal);
+    }
+    final averageIntake = recordedDays == 0 ? 0.0 : intakeTotal / recordedDays;
+    final currentWeight = state.currentWeightKg;
+    final bodyFat = NutritionMath.bodyFatPercent(
+      profile,
+      weightKg: currentWeight,
+    );
+
+    return {
+      '今天': DateFormat('yyyy-MM-dd').format(now),
+      '资料': {
+        '性别': profile.sex == 'male' ? '男' : '女',
+        '年龄': profile.age,
+        '身高cm': profile.heightCm,
+        '当前体重kg': currentWeight,
+        '目标体重kg': profile.targetWeightKg,
+        '活动水平': activityLabel(profile.activity),
+      },
+      '代谢与体脂估算': {
+        '基础代谢kcal': NutritionMath.bmr(profile).round(),
+        '每日总消耗kcal': NutritionMath.tdee(profile).round(),
+        '体脂率百分比': double.parse(bodyFat.toStringAsFixed(1)),
+        '体脂分类': NutritionMath.bodyFatLabel(bodyFat, profile.sex),
+      },
+      '最近7天': {
+        '有饮食记录天数': recordedDays,
+        '有记录日子的日均摄入kcal': averageIntake.round(),
+        '近期平均每日热量缺口kcal': state.recentAverageDeficit().round(),
+        '预计还需天数': state.predictDaysToTarget(),
+      },
+      '最近30天体重记录': [
+        for (final entry in recentWeights)
+          {'日期': DateFormat('yyyy-MM-dd').format(entry.date), '体重kg': entry.kg},
+      ],
+      '最近30天饮食记录': mealsByDay.values.toList(),
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasAdvice = _advice != null;
+    final buttonLabel = _loading
+        ? '正在生成建议'
+        : _cooldown > 0
+        ? '$_cooldown 秒后可再次生成'
+        : hasAdvice
+        ? '重新生成建议'
+        : '生成 AI 建议';
+
+    return SurfaceCard(
+      padding: const EdgeInsets.fromLTRB(26, 24, 26, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                CupertinoIcons.sparkles,
+                size: 15,
+                color: AppColors.accentDeep,
+              ),
+              const SizedBox(width: 7),
+              const Text(
+                'AI 建议',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.secondary,
+                ),
+              ),
+              const Spacer(),
+              if (hasAdvice && !_loading)
+                const Tag(
+                  label: '已生成',
+                  color: AppColors.accentDeep,
+                  background: AppColors.accentSoft,
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            '结合最近 30 天的体重和饮食记录，让 AI 给出一段简短的调整建议。',
+            style: TextStyle(
+              fontSize: 12.5,
+              height: 1.7,
+              color: AppColors.secondary,
+            ),
+          ),
+          if (_advice != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(16, 15, 16, 15),
+              decoration: BoxDecoration(
+                color: AppColors.accentSoft,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: const Color(0x2EFFFFFF)),
+              ),
+              child: Text(
+                _advice!,
+                style: const TextStyle(
+                  fontSize: 14,
+                  height: 1.8,
+                  color: AppColors.ink,
+                ),
+              ),
+            ),
+          ],
+          if (_error != null) ...[
+            const SizedBox(height: 14),
+            Text(
+              _error!,
+              style: const TextStyle(
+                fontSize: 12.5,
+                height: 1.6,
+                color: AppColors.warning,
+              ),
+            ),
+          ],
+          const SizedBox(height: 18),
+          PrimaryButton(
+            label: buttonLabel,
+            icon: hasAdvice
+                ? CupertinoIcons.arrow_clockwise
+                : CupertinoIcons.sparkles,
+            busy: _loading,
+            onPressed: _canGenerate ? _generate : null,
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            '点击后会把资料、体重和饮食记录发送给 AI 服务，不会上传照片。建议仅供参考，不能替代医生或营养师。',
             style: TextStyle(
               fontSize: 11,
               height: 1.6,
@@ -1010,8 +1269,8 @@ class _WeightSheetState extends State<_WeightSheet> {
       showAppMessage(
         context,
         unit == WeightUnit.grams
-            ? '请输入 25000–400000 g 之间的有效体重'
-            : '请输入 25–400 kg 之间的有效体重',
+            ? '请输入 25000–400000 克之间的有效体重'
+            : '请输入 25–400 公斤之间的有效体重',
       );
       return;
     }
@@ -1101,7 +1360,7 @@ class _WeightSheetState extends State<_WeightSheet> {
             style: AppTextStyles.numericLarge,
             decoration: InputDecoration(
               labelText: isToday ? '今天的体重' : '这一天的体重',
-              suffixText: unit.symbol,
+              suffixText: unit.label,
             ),
             onSubmitted: (_) => save(),
           ),
@@ -1109,7 +1368,7 @@ class _WeightSheetState extends State<_WeightSheet> {
           Text(
             unit == WeightUnit.kilograms
                 ? '固定时间、相近状态测量，趋势会更有意义。'
-                : '当前按克显示，输入时直接填写克数，例如 65200 表示 65.2 kg。',
+                : '当前按克显示，输入时直接填写克数，例如 65200 表示 65.2 公斤。',
             style: const TextStyle(
               fontSize: 12,
               height: 1.6,

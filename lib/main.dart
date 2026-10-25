@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_state.dart';
 import 'cloud_sync.dart';
@@ -136,30 +137,23 @@ class LaunchView extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Text(
-                  '每餐',
-                  style: TextStyle(
-                    fontSize: 34,
-                    height: 1.1,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 10,
-                    color: AppColors.ink,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  '每一餐，都清清楚楚',
+                  '加载中',
                   style: TextStyle(
                     fontSize: 12,
-                    letterSpacing: 0.8,
+                    letterSpacing: 2,
                     color: AppColors.tertiary,
                   ),
                 ),
-                const SizedBox(height: 30),
-                const SizedBox.square(
-                  dimension: 22,
-                  child: CupertinoActivityIndicator(
-                    radius: 9,
-                    color: AppColors.accent,
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: 108,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(99),
+                    child: const LinearProgressIndicator(
+                      minHeight: 3,
+                      color: AppColors.accent,
+                      backgroundColor: Color(0x24F5F5F7),
+                    ),
                   ),
                 ),
               ],
@@ -182,10 +176,42 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
+  static const String _webStorageNoticeKey = 'meican_web_storage_notice_v1';
+
   int index = 0;
   late final PageController _pageController = PageController(
     initialPage: index,
   );
+
+  @override
+  void initState() {
+    super.initState();
+    if (kIsWeb) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showWebStorageNotice();
+      });
+    }
+  }
+
+  Future<void> _showWebStorageNotice() async {
+    final SharedPreferences preferences;
+    try {
+      preferences = await SharedPreferences.getInstance();
+    } catch (_) {
+      return;
+    }
+    if (preferences.getBool(_webStorageNoticeKey) ?? false) return;
+    if (!mounted) return;
+    await preferences.setBool(_webStorageNoticeKey, true);
+    if (!mounted) return;
+    await showAppAlert(
+      context,
+      title: '数据保存在本地',
+      message:
+          '网页版的记录保存在当前浏览器中，请不要清理浏览器缓存，也不要使用无痕模式。\n\n'
+          '需要跨设备备份时，可以在「我的 → 云同步」中自愿登录；不开启云同步也能正常使用全部本地功能。',
+    );
+  }
 
   void select(int value) {
     if (value == index) return;

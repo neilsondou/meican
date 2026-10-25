@@ -55,7 +55,8 @@ class GlmService {
   );
 
   static const Duration _timeout = Duration(seconds: 60);
-  static const String _model = 'glm-4v-flash';
+  static const String _visionModel = 'glm-4v-flash';
+  static const String _textModel = 'glm-4-flash';
 
   static const String _mealSystemPrompt = '''
 你是“每餐”的食物热量估算助手。根据照片和用户补充，估算实际吃掉的每种食物的可食部重量与总热量。
@@ -82,6 +83,15 @@ class GlmService {
 3. unit 只能填 kg、g 或 unknown。截图明确写 kg、公斤、千克时填 kg；明确写 g、克时填 g；没有任何单位时才填 unknown。不要仅凭数值大小猜单位。
 4. weight 保留截图中的原始数值和单位，不要换算。相同日期出现多条时，只保留截图中最后或最完整的一条。
 5. records 按日期从早到晚排列。reply 不超过 40 个汉字，说明识别依据；单位不明确时必须提醒。
+''';
+
+  static const String _adviceSystemPrompt = '''
+你是“每餐”的减重建议助手。用户会提供一份 JSON，包含身体资料、体脂估算、最近的体重和饮食记录。
+用简体中文输出一段简短建议：
+1. 先根据数据指出最值得注意的一点，再给 2–3 条具体、今天就能执行的调整。
+2. 全文不超过 150 个汉字，最多 4 行；不用 Markdown、标题、表情或“作为 AI”等套话。
+3. 只依据提供的数据，不编造记录；数据不足时直接说明还需要哪些记录。
+4. 不建议极端节食、药物、催吐或快速减重，不承诺具体减重数字，不做医疗诊断。
 ''';
 
   Future<GlmResult> analyze({
@@ -117,6 +127,22 @@ class GlmService {
     return _parseWeightResult(content);
   }
 
+  Future<String> advise({required Map<String, Object?> data}) async {
+    final requestBody = <String, dynamic>{
+      'model': _textModel,
+      'messages': [
+        {'role': 'system', 'content': _adviceSystemPrompt},
+        {
+          'role': 'user',
+          'content': '以下是我的资料和最近记录（JSON）：\n${jsonEncode(data)}\n请给出简短建议。',
+        },
+      ],
+      'temperature': 0.4,
+    };
+    final content = await _request(requestBody: requestBody, action: 'AI 建议');
+    return content.trim();
+  }
+
   Future<String> _complete({
     required Uint8List bytes,
     required String mimeType,
@@ -131,7 +157,7 @@ class GlmService {
     }
 
     final requestBody = <String, dynamic>{
-      'model': _model,
+      'model': _visionModel,
       'messages': [
         {'role': 'system', 'content': systemPrompt},
         {
@@ -149,53 +175,61 @@ class GlmService {
       ],
     };
 
+    return _request(requestBody: requestBody, action: '图片识别');
+  }
+
+  Future<String> _request({
+    required Map<String, dynamic> requestBody,
+    required String action,
+  }) async {
     if (kIsWeb) {
-      final response = await _postProxy(requestBody);
+      final response = await _postProxy(requestBody, action);
       final status = response.statusCode;
+      final body = _responseText(response);
       if (status >= 200 && status < 300) {
-        return _extractContent(_responseText(response));
+        return _extractContent(body, action);
       }
       if (status == 429) {
-        final detail = _errorDetail(_responseText(response));
-        throw GlmException(detail.isEmpty ? '图片识别服务当前请求较多，请稍后重试。' : detail);
+        final detail = _errorDetail(body);
+        throw GlmException(detail.isEmpty ? '$action服务当前请求较多，请稍后重试。' : detail);
       }
       if (status == 413) {
-        throw const GlmException('照片太大，请重新选择后再试。');
+        throw const GlmException('请求内容太大，请精简后重试。');
       }
-      final detail = _errorDetail(_responseText(response));
+      final detail = _errorDetail(body);
       throw GlmException(
-        '识别服务请求失败（HTTP $status）'
+        '$action请求失败（HTTP $status）'
         '${detail.isEmpty ? '，请稍后重试。' : '：$detail'}',
       );
     }
 
     final keys = AiKeyPool.nextOrder();
     if (keys.isEmpty) {
-      throw const GlmException('当前版本未启用图片识别服务，请安装配置后的版本。');
+      throw GlmException('当前版本未启用$action服务，请安装配置后的版本。');
     }
 
     GlmException? retryable;
     for (final key in keys) {
-      final response = await _post(key, requestBody);
+      final response = await _post(key, requestBody, action);
       final status = response.statusCode;
 
       if (status >= 200 && status < 300) {
-        return _extractContent(_responseText(response));
+        return _extractContent(_responseText(response), action);
       }
 
       if (_canRetryWithAnotherKey(status)) {
-        retryable = _statusException(status);
+        retryable = _statusException(status, action);
         continue;
       }
 
       final detail = _errorDetail(_responseText(response));
       throw GlmException(
-        '识别服务请求失败（HTTP $status）'
+        '$action请求失败（HTTP $status）'
         '${detail.isEmpty ? '，请稍后重试。' : '：$detail'}',
       );
     }
 
-    throw retryable ?? const GlmException('图片识别服务暂时不可用，请稍后重试。');
+    throw retryable ?? GlmException('$action服务暂时不可用，请稍后重试。');
   }
 
   static String _mealRequestText(
@@ -226,21 +260,24 @@ class GlmService {
         'reply 直接说明这次调整了什么。';
   }
 
-  Future<http.Response> _postProxy(Map<String, dynamic> requestBody) async {
+  Future<http.Response> _postProxy(
+    Map<String, dynamic> requestBody,
+    String action,
+  ) async {
     try {
       return await http
           .post(
-            AppConfig.api('/api/ai/analyze'),
+            AppConfig.aiProxy,
             headers: {'Content-Type': 'application/json'},
             body: jsonEncode(requestBody),
           )
           .timeout(const Duration(seconds: 90));
     } on TimeoutException {
-      throw const GlmException('图片识别超时，请检查网络后重试。');
+      throw GlmException('$action超时，请检查网络后重试。');
     } on http.ClientException {
-      throw const GlmException('无法连接图片识别服务，请检查网络后重试。');
+      throw GlmException('无法连接$action服务，请检查网络后重试。');
     } on Exception {
-      throw const GlmException('图片识别请求失败，请稍后重试。');
+      throw GlmException('$action请求失败，请稍后重试。');
     }
   }
 
@@ -255,6 +292,7 @@ class GlmService {
   Future<http.Response> _post(
     String apiKey,
     Map<String, dynamic> requestBody,
+    String action,
   ) async {
     try {
       return await http
@@ -268,14 +306,11 @@ class GlmService {
           )
           .timeout(_timeout);
     } on TimeoutException {
-      throw const GlmException('图片识别超时，请检查网络后重试。');
+      throw GlmException('$action超时，请检查网络后重试。');
     } on http.ClientException {
-      if (kIsWeb) {
-        throw const GlmException('网页预览受浏览器跨域限制，无法直接连接图片识别服务。请使用手机 App。');
-      }
-      throw const GlmException('无法连接图片识别服务，请检查网络后重试。');
+      throw GlmException('无法连接$action服务，请检查网络后重试。');
     } on Exception {
-      throw const GlmException('图片识别请求失败，请稍后重试。');
+      throw GlmException('$action请求失败，请稍后重试。');
     }
   }
 
@@ -287,35 +322,35 @@ class GlmService {
         status >= 500;
   }
 
-  static GlmException _statusException(int status) {
+  static GlmException _statusException(int status, String action) {
     if (status == 401 || status == 403) {
-      return const GlmException('图片识别服务配置已失效，请安装最新版本后重试。');
+      return GlmException('$action服务配置已失效，请安装最新版本后重试。');
     }
     if (status == 429) {
-      return const GlmException('图片识别服务当前请求较多，请稍后重试。');
+      return GlmException('$action服务当前请求较多，请稍后重试。');
     }
-    return const GlmException('图片识别服务暂时不可用，请稍后重试。');
+    return GlmException('$action服务暂时不可用，请稍后重试。');
   }
 
-  static String _extractContent(String body) {
+  static String _extractContent(String body, String action) {
     try {
       final root = _asMap(jsonDecode(body), '服务响应');
       if (root.containsKey('error')) {
-        throw GlmException('识别服务返回错误：${_errorMessage(root['error'])}');
+        throw GlmException('$action返回错误：${_errorMessage(root['error'])}');
       }
       final choices = root['choices'];
       if (choices is! List || choices.isEmpty) {
-        throw const GlmException('识别服务没有返回结果，请重试。');
+        throw GlmException('$action没有返回结果，请重试。');
       }
-      final choice = _asMap(choices.first, '识别结果');
-      final message = _asMap(choice['message'], '识别结果');
+      final choice = _asMap(choices.first, '服务结果');
+      final message = _asMap(choice['message'], '服务结果');
       return _contentText(message['content']);
     } on GlmException {
       rethrow;
     } on FormatException {
-      throw const GlmException('识别服务返回了无法解析的数据，请重试。');
+      throw GlmException('$action返回了无法解析的数据，请重试。');
     } catch (_) {
-      throw const GlmException('识别结果格式不正确，请重试。');
+      throw GlmException('$action结果格式不正确，请重试。');
     }
   }
 

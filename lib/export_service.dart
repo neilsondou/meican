@@ -32,7 +32,7 @@ class ExportService {
         '热量(kcal)',
         '备注',
         '来源',
-        '体重(${unit.symbol})',
+        '体重(${unit.label})',
       ],
     ];
 
@@ -153,7 +153,7 @@ class ExportService {
             pw.Text('暂无体重记录')
           else
             pw.TableHelper.fromTextArray(
-              headers: ['日期', '体重(${unit.symbol})'],
+              headers: ['日期', '体重(${unit.label})'],
               data: [
                 for (final weight in sortedWeights)
                   [

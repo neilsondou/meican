@@ -1416,6 +1416,7 @@ Future<bool> showConfirmDialog(
   required String message,
   required String confirmLabel,
   bool destructive = false,
+  bool showCancel = true,
 }) async {
   final reduceMotion = MediaQuery.disableAnimationsOf(context);
   final result = await showGeneralDialog<bool>(
@@ -1436,6 +1437,7 @@ Future<bool> showConfirmDialog(
             message: message,
             confirmLabel: confirmLabel,
             destructive: destructive,
+            showCancel: showCancel,
           ),
         ),
       ),
@@ -1458,18 +1460,35 @@ Future<bool> showConfirmDialog(
   return result ?? false;
 }
 
+Future<void> showAppAlert(
+  BuildContext context, {
+  required String title,
+  required String message,
+  String buttonLabel = '知道了',
+}) async {
+  await showConfirmDialog(
+    context,
+    title: title,
+    message: message,
+    confirmLabel: buttonLabel,
+    showCancel: false,
+  );
+}
+
 class _GlassAlert extends StatelessWidget {
   const _GlassAlert({
     required this.title,
     required this.message,
     required this.confirmLabel,
     required this.destructive,
+    this.showCancel = true,
   });
 
   final String title;
   final String message;
   final String confirmLabel;
   final bool destructive;
+  final bool showCancel;
 
   @override
   Widget build(BuildContext context) {
@@ -1516,13 +1535,15 @@ class _GlassAlert extends StatelessWidget {
           const SizedBox(height: 24),
           Row(
             children: [
-              Expanded(
-                child: _AlertAction(
-                  label: '取消',
-                  onTap: () => Navigator.pop(context, false),
+              if (showCancel) ...[
+                Expanded(
+                  child: _AlertAction(
+                    label: '取消',
+                    onTap: () => Navigator.pop(context, false),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
+                const SizedBox(width: 10),
+              ],
               Expanded(
                 child: _AlertAction(
                   label: confirmLabel,

@@ -67,18 +67,17 @@
       pointer-events: none;
     }
 
-    #meican-splash .brand {
-      font-size: 34px;
-      font-weight: 600;
-      letter-spacing: 10px;
-      text-indent: 10px;
+    #meican-splash .loading-label {
+      font-size: 12px;
+      letter-spacing: 2px;
+      color: rgba(245, 245, 247, 0.46);
     }
 
     #meican-splash .bar {
       position: relative;
-      width: 132px;
+      width: 108px;
       height: 3px;
-      margin-top: 28px;
+      margin-top: 12px;
       overflow: hidden;
       border-radius: 99px;
       background: rgba(245, 245, 247, 0.14);
@@ -111,8 +110,8 @@
   </style>
 </head>
 <body>
-  <div id="meican-splash" role="status" aria-label="每餐正在加载">
-    <div class="brand">每餐</div>
+  <div id="meican-splash" role="status" aria-label="正在加载">
+    <div class="loading-label">加载中</div>
     <div class="bar"></div>
   </div>
   <noscript>需要启用 JavaScript 才能使用每餐。</noscript>
