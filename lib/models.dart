@@ -162,32 +162,33 @@ DateTime? _dateOrNull(Object? value) {
 }
 
 enum WeightUnit {
-  kilograms('kg', '公斤'),
-  grams('g', '克');
+  kilograms('kg', '公斤', 1),
+  jin('jin', '市斤', 2);
 
-  const WeightUnit(this.symbol, this.label);
+  const WeightUnit(this.symbol, this.label, this.perKilogram);
 
   /// 存储与接口使用的英文缩写，界面上统一显示 [label]。
   final String symbol;
   final String label;
 
+  /// 1 公斤等于 2 市斤。
+  final double perKilogram;
+
   static WeightUnit fromStorage(Object? value) {
     final text = value is String ? value.trim().toLowerCase() : '';
-    return text == 'g' || text == '克' ? grams : kilograms;
+    if (text == 'jin' || text == '市斤' || text == '斤') return jin;
+    // 旧版本偏好里的 g/克 只是显示单位，存储一直是公斤。
+    return kilograms;
   }
 
-  double toDisplay(double kg) => this == grams ? kg * 1000 : kg;
+  double toDisplay(double kg) => kg * perKilogram;
 
-  double toKilograms(double value) => this == grams ? value / 1000 : value;
+  double toKilograms(double value) => value / perKilogram;
 
-  double displayInput(double kg) {
-    if (this == grams) return (kg * 1000).roundToDouble();
-    return (kg * 10).roundToDouble() / 10;
-  }
+  double displayInput(double kg) => (toDisplay(kg) * 10).roundToDouble() / 10;
 
   String formatValue(double kg) {
     final value = toDisplay(kg);
-    if (this == grams) return value.round().toString();
     final rounded = (value * 10).roundToDouble() / 10;
     return rounded == rounded.roundToDouble()
         ? rounded.toInt().toString()

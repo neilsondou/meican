@@ -19,6 +19,7 @@ dependencies:
   pdf: ^3.13.1
   printing: ^5.15.1
   share_plus: ^13.3.1
+  web: ^1.1.1
 
 dev_dependencies:
   flutter_test:
@@ -39,12 +40,7 @@ flutter_launcher_icons:
 
 flutter:
   uses-material-design: true
+  # 字体不再写进 FontManifest：Flutter Web 会在首帧前阻塞下载全部字体。
+  # 改为启动时用 FontLoader 从国内可访问的 CDN 加载，失败再回退到本地文件。
   assets:
-    - assets/fonts/OFL.txt
-  fonts:
-    - family: MeicanSans
-      fonts:
-        - asset: assets/fonts/MeicanSans-Regular.ttf
-          weight: 400
-        - asset: assets/fonts/MeicanSans-SemiBold.ttf
-          weight: 600
+    - assets/fonts/

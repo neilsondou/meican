@@ -693,6 +693,7 @@ class PillSegmented<T> extends StatelessWidget {
                               color: option.value == value
                                   ? AppColors.ink
                                   : AppColors.secondary,
+                              decoration: TextDecoration.none,
                             ),
                             child: Text(option.label),
                           ),
@@ -1417,6 +1418,7 @@ Future<bool> showConfirmDialog(
   required String confirmLabel,
   bool destructive = false,
   bool showCancel = true,
+  Widget? extra,
 }) async {
   final reduceMotion = MediaQuery.disableAnimationsOf(context);
   final result = await showGeneralDialog<bool>(
@@ -1429,15 +1431,21 @@ Future<bool> showConfirmDialog(
         : const Duration(milliseconds: 220),
     pageBuilder: (dialogContext, animation, secondaryAnimation) => Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
+        padding: const EdgeInsets.fromLTRB(32, 24, 32, 24),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 360),
-          child: _GlassAlert(
-            title: title,
-            message: message,
-            confirmLabel: confirmLabel,
-            destructive: destructive,
-            showCancel: showCancel,
+          constraints: BoxConstraints(
+            maxWidth: 360,
+            maxHeight: MediaQuery.sizeOf(dialogContext).height - 48,
+          ),
+          child: SingleChildScrollView(
+            child: _GlassAlert(
+              title: title,
+              message: message,
+              confirmLabel: confirmLabel,
+              destructive: destructive,
+              showCancel: showCancel,
+              extra: extra,
+            ),
           ),
         ),
       ),
@@ -1465,6 +1473,7 @@ Future<void> showAppAlert(
   required String title,
   required String message,
   String buttonLabel = '知道了',
+  Widget? extra,
 }) async {
   await showConfirmDialog(
     context,
@@ -1472,6 +1481,7 @@ Future<void> showAppAlert(
     message: message,
     confirmLabel: buttonLabel,
     showCancel: false,
+    extra: extra,
   );
 }
 
@@ -1482,6 +1492,7 @@ class _GlassAlert extends StatelessWidget {
     required this.confirmLabel,
     required this.destructive,
     this.showCancel = true,
+    this.extra,
   });
 
   final String title;
@@ -1489,6 +1500,7 @@ class _GlassAlert extends StatelessWidget {
   final String confirmLabel;
   final bool destructive;
   final bool showCancel;
+  final Widget? extra;
 
   @override
   Widget build(BuildContext context) {
@@ -1532,6 +1544,7 @@ class _GlassAlert extends StatelessWidget {
               decoration: TextDecoration.none,
             ),
           ),
+          if (extra != null) ...[const SizedBox(height: 18), extra!],
           const SizedBox(height: 24),
           Row(
             children: [
@@ -1673,6 +1686,7 @@ class _ToastBubble extends StatelessWidget {
                 height: 1.35,
                 fontWeight: FontWeight.w500,
                 color: AppColors.ink,
+                decoration: TextDecoration.none,
               ),
             ),
           ),

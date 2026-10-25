@@ -88,7 +88,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                     SizedBox(height: 3),
                     Text(
-                      '切换后全局显示与输入都会换算',
+                      '切换后全局显示与输入都会换算，1 公斤 = 2 市斤',
                       style: TextStyle(
                         fontSize: 12,
                         height: 1.4,
@@ -104,7 +104,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 child: PillSegmented<WeightUnit>(
                   options: const [
                     SegmentedOption(value: WeightUnit.kilograms, label: '公斤'),
-                    SegmentedOption(value: WeightUnit.grams, label: '克'),
+                    SegmentedOption(value: WeightUnit.jin, label: '市斤'),
                   ],
                   value: state.profile.weightUnit,
                   onChanged: _setWeightUnit,
@@ -511,8 +511,8 @@ class _ProfileSheetState extends State<ProfileSheet> {
               Expanded(
                 child: TextField(
                   controller: weight,
-                  keyboardType: TextInputType.numberWithOptions(
-                    decimal: unit == WeightUnit.kilograms,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
                   ),
                   decoration: InputDecoration(
                     labelText: '体重',
@@ -539,8 +539,8 @@ class _ProfileSheetState extends State<ProfileSheet> {
               Expanded(
                 child: TextField(
                   controller: target,
-                  keyboardType: TextInputType.numberWithOptions(
-                    decimal: unit == WeightUnit.kilograms,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
                   ),
                   decoration: InputDecoration(
                     labelText: '目标体重',

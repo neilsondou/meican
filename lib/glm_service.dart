@@ -80,7 +80,7 @@ class GlmService {
 规则：
 1. 只识别明确属于体重记录的日期和数值，忽略身高、BMI、目标体重、热量等无关数据。
 2. date 必须尽量还原为 YYYY-MM-DD。根据截图里的年份、月份标题或上下文补全日期；如果只有月和日，使用不晚于今天的最近年份。无法确定具体日期的记录不要输出，绝不编造日期。
-3. unit 只能填 kg、g 或 unknown。截图明确写 kg、公斤、千克时填 kg；明确写 g、克时填 g；没有任何单位时才填 unknown。不要仅凭数值大小猜单位。
+3. unit 只能填 kg、jin 或 unknown。截图明确写 kg、公斤、千克时填 kg；明确写斤、市斤时填 jin；没有任何单位时才填 unknown。不要仅凭数值大小猜单位。
 4. weight 保留截图中的原始数值和单位，不要换算。相同日期出现多条时，只保留截图中最后或最完整的一条。
 5. records 按日期从早到晚排列。reply 不超过 40 个汉字，说明识别依据；单位不明确时必须提醒。
 ''';
@@ -408,8 +408,8 @@ class GlmService {
     final WeightUnit? unit =
         unitText == 'kg' || unitText == '公斤' || unitText == '千克'
         ? WeightUnit.kilograms
-        : unitText == 'g' || unitText == '克'
-        ? WeightUnit.grams
+        : unitText == 'jin' || unitText == '市斤' || unitText == '斤'
+        ? WeightUnit.jin
         : null;
     final reply = root['reply'] is String
         ? (root['reply'] as String).trim()
@@ -427,7 +427,7 @@ class GlmService {
       final item = Map<String, dynamic>.from(raw);
       final date = _parseWeightDate(item['date']);
       final value = _toDouble(
-        item['weight'] ?? item['value'] ?? item['kg'] ?? item['g'],
+        item['weight'] ?? item['value'] ?? item['kg'] ?? item['jin'],
       );
       if (date == null ||
           date.isAfter(today) ||

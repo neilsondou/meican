@@ -7,29 +7,31 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('kg 与 g 的输入和显示按偏好换算', () {
+  test('kg 与市斤的输入和显示按偏好换算', () {
     expect(WeightUnit.kilograms.toDisplay(65.2), 65.2);
-    expect(WeightUnit.grams.toDisplay(65.2), 65200);
-    expect(WeightUnit.grams.toKilograms(65200), 65.2);
+    expect(WeightUnit.jin.toDisplay(65.2), closeTo(130.4, 0.0001));
+    expect(WeightUnit.jin.toKilograms(130.4), closeTo(65.2, 0.0001));
 
     expect(WeightUnit.kilograms.formatValue(65.0), '65');
     expect(WeightUnit.kilograms.formatValue(65.24), '65.2');
-    expect(WeightUnit.grams.formatValue(65.2), '65200');
-    expect(WeightUnit.grams.format(65.2), '65200 克');
+    expect(WeightUnit.jin.formatValue(65.2), '130.4');
+    expect(WeightUnit.jin.format(65.2), '130.4 市斤');
     expect(WeightUnit.kilograms.format(65.2), '65.2 公斤');
     expect(WeightUnit.kilograms.displayInput(65.24), 65.2);
-    expect(WeightUnit.grams.displayInput(65.24), 65240);
+    expect(WeightUnit.jin.displayInput(65.24), 130.5);
   });
 
   test('单位偏好随资料 JSON 往返并兼容旧数据', () {
     final profile = const UserProfile(
-      weightUnit: WeightUnit.grams,
+      weightUnit: WeightUnit.jin,
     ).copyWith(weightKg: 62.5);
 
     final restored = UserProfile.fromJson(profile.toJson());
 
-    expect(restored.weightUnit, WeightUnit.grams);
+    expect(restored.weightUnit, WeightUnit.jin);
     expect(restored.weightKg, 62.5);
+    expect(WeightUnit.fromStorage('市斤'), WeightUnit.jin);
+    expect(WeightUnit.fromStorage('jin'), WeightUnit.jin);
 
     final legacy = UserProfile.fromJson({
       'heightCm': 170,
@@ -40,6 +42,17 @@ void main() {
       'targetWeightKg': 60,
     });
     expect(legacy.weightUnit, WeightUnit.kilograms);
+
+    final legacyGrams = UserProfile.fromJson({
+      'heightCm': 170,
+      'weightKg': 65,
+      'age': 30,
+      'sex': 'male',
+      'activity': 1.375,
+      'targetWeightKg': 60,
+      'weightUnit': 'g',
+    });
+    expect(legacyGrams.weightUnit, WeightUnit.kilograms);
   });
 
   test('Deurenberg 体脂估算与分类', () {
@@ -100,18 +113,18 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final state = AppState();
     await state.updateProfile(
-      state.profile.copyWith(weightUnit: WeightUnit.grams),
+      state.profile.copyWith(weightUnit: WeightUnit.jin),
     );
 
     final reloaded = AppState();
     await reloaded.load();
-    expect(reloaded.profile.weightUnit, WeightUnit.grams);
+    expect(reloaded.profile.weightUnit, WeightUnit.jin);
 
     final base = DateTime.utc(2026, 10, 1, 12);
     final local = SyncSnapshot(
       meals: const [],
       weights: const [],
-      profile: const UserProfile(weightUnit: WeightUnit.grams),
+      profile: const UserProfile(weightUnit: WeightUnit.jin),
       profileUpdatedAt: base.add(const Duration(minutes: 5)),
       deletedMeals: const {},
       deletedWeights: const {},
@@ -126,6 +139,6 @@ void main() {
     );
 
     final result = mergeSyncSnapshots(local, remote);
-    expect(result.snapshot.profile.weightUnit, WeightUnit.grams);
+    expect(result.snapshot.profile.weightUnit, WeightUnit.jin);
   });
 }

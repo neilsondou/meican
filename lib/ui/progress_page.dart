@@ -378,9 +378,7 @@ class _DeltaLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final down = delta < 0;
-    final flat = unit == WeightUnit.grams
-        ? unit.toDisplay(delta).abs() < 0.5
-        : delta.abs() < 0.05;
+    final flat = delta.abs() < 0.05;
     final color = flat
         ? AppColors.tertiary
         : down
@@ -475,7 +473,7 @@ class _PredictionCard extends StatelessWidget {
                 const SizedBox(height: 18),
                 Text(
                   unit == WeightUnit.kilograms
-                      ? '还需减掉约 ${unit.format(remaining)} · ${formatNumber(remaining * 2)} 斤'
+                      ? '还需减掉约 ${unit.format(remaining)} · ${WeightUnit.jin.format(remaining)}'
                       : '还需减掉约 ${unit.format(remaining)}',
                   style: const TextStyle(
                     fontSize: 13,
@@ -1268,8 +1266,8 @@ class _WeightSheetState extends State<_WeightSheet> {
     if (kg == null || !kg.isFinite || kg < 25 || kg > 400) {
       showAppMessage(
         context,
-        unit == WeightUnit.grams
-            ? '请输入 25000–400000 克之间的有效体重'
+        unit == WeightUnit.jin
+            ? '请输入 50–800 市斤之间的有效体重'
             : '请输入 25–400 公斤之间的有效体重',
       );
       return;
@@ -1354,9 +1352,7 @@ class _WeightSheetState extends State<_WeightSheet> {
           TextField(
             controller: controller,
             autofocus: !editing,
-            keyboardType: TextInputType.numberWithOptions(
-              decimal: unit == WeightUnit.kilograms,
-            ),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             style: AppTextStyles.numericLarge,
             decoration: InputDecoration(
               labelText: isToday ? '今天的体重' : '这一天的体重',
@@ -1368,7 +1364,7 @@ class _WeightSheetState extends State<_WeightSheet> {
           Text(
             unit == WeightUnit.kilograms
                 ? '固定时间、相近状态测量，趋势会更有意义。'
-                : '当前按克显示，输入时直接填写克数，例如 65200 表示 65.2 公斤。',
+                : '当前按市斤显示，直接填写市斤数，例如 130.4 市斤等于 65.2 公斤。',
             style: const TextStyle(
               fontSize: 12,
               height: 1.6,

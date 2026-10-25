@@ -10,8 +10,11 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'app_config.dart';
+import 'app_fonts.dart';
 import 'app_state.dart';
 import 'cloud_sync.dart';
+import 'external_link.dart';
 import 'ui/ai_page.dart';
 import 'ui/components.dart';
 import 'ui/home_page.dart';
@@ -41,6 +44,8 @@ class MeiCanApp extends StatefulWidget {
 }
 
 class _MeiCanAppState extends State<MeiCanApp> with WidgetsBindingObserver {
+  bool _fontsReady = false;
+
   @override
   void initState() {
     super.initState();
@@ -62,7 +67,20 @@ class _MeiCanAppState extends State<MeiCanApp> with WidgetsBindingObserver {
   }
 
   Future<void> _boot() async {
-    await widget.state.load();
+    final fonts = loadAppFonts();
+    unawaited(
+      fonts.whenComplete(() {
+        if (mounted) setState(() {});
+      }),
+    );
+    await Future.wait<void>([
+      widget.state.load(),
+      if (kIsWeb)
+        fonts.timeout(const Duration(seconds: 7), onTimeout: () {})
+      else
+        fonts,
+    ]);
+    if (mounted) setState(() => _fontsReady = true);
     await widget.cloud.init();
     unawaited(widget.cloud.syncOnLaunch());
   }
@@ -84,18 +102,34 @@ class _MeiCanAppState extends State<MeiCanApp> with WidgetsBindingObserver {
       ],
       builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
         value: appSystemOverlay,
-        child: child ?? const SizedBox.shrink(),
+        child: DefaultTextStyle(
+          style: const TextStyle(
+            fontFamily: 'MeicanSans',
+            color: AppColors.ink,
+            decoration: TextDecoration.none,
+          ),
+          child: child ?? const SizedBox.shrink(),
+        ),
       ),
-      home: _Root(state: widget.state, cloud: widget.cloud),
+      home: _Root(
+        state: widget.state,
+        cloud: widget.cloud,
+        fontsReady: _fontsReady,
+      ),
     );
   }
 }
 
 class _Root extends StatelessWidget {
-  const _Root({required this.state, required this.cloud});
+  const _Root({
+    required this.state,
+    required this.cloud,
+    required this.fontsReady,
+  });
 
   final AppState state;
   final CloudSync cloud;
+  final bool fontsReady;
 
   @override
   Widget build(BuildContext context) {
@@ -108,13 +142,16 @@ class _Root extends StatelessWidget {
               : const Duration(milliseconds: 220),
           switchInCurve: Curves.easeOut,
           switchOutCurve: Curves.easeIn,
-          child: state.ready
+          child: state.ready && fontsReady
               ? AppShell(
                   key: const ValueKey('shell'),
                   state: state,
                   cloud: cloud,
                 )
-              : const LaunchView(key: ValueKey('launch')),
+              : LaunchView(
+                  key: const ValueKey('launch'),
+                  showLabel: fontsReady,
+                ),
         );
       },
     );
@@ -122,7 +159,10 @@ class _Root extends StatelessWidget {
 }
 
 class LaunchView extends StatelessWidget {
-  const LaunchView({super.key});
+  const LaunchView({super.key, this.showLabel = true});
+
+  /// 字体尚未注册时先不渲染中文，避免触发 Google Fonts 中文回退字体下载。
+  final bool showLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -136,15 +176,17 @@ class LaunchView extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
-                  '加载中',
-                  style: TextStyle(
-                    fontSize: 12,
-                    letterSpacing: 2,
-                    color: AppColors.tertiary,
+                if (showLabel) ...[
+                  const Text(
+                    '加载中',
+                    style: TextStyle(
+                      fontSize: 12,
+                      letterSpacing: 2,
+                      color: AppColors.tertiary,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
+                  const SizedBox(height: 12),
+                ],
                 SizedBox(
                   width: 108,
                   child: ClipRRect(
@@ -176,7 +218,7 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
-  static const String _webStorageNoticeKey = 'meican_web_storage_notice_v1';
+  static const String _webStorageNoticeKey = 'meican_web_storage_notice_v2';
 
   int index = 0;
   late final PageController _pageController = PageController(
@@ -209,7 +251,8 @@ class _AppShellState extends State<AppShell> {
       title: '数据保存在本地',
       message:
           '网页版的记录保存在当前浏览器中，请不要清理浏览器缓存，也不要使用无痕模式。\n\n'
-          '需要跨设备备份时，可以在「我的 → 云同步」中自愿登录；不开启云同步也能正常使用全部本地功能。',
+          '需要跨设备备份时，可以在「我的」里的「云同步」中自愿登录；不开启云同步也能正常使用全部本地功能。',
+      extra: const _WebDownloadLinks(),
     );
   }
 
@@ -306,6 +349,112 @@ class _AppShellState extends State<AppShell> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _WebDownloadLinks extends StatelessWidget {
+  const _WebDownloadLinks();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const HairLine(),
+        const SizedBox(height: 16),
+        const Text(
+          '手机版',
+          style: TextStyle(
+            fontSize: 14.5,
+            fontWeight: FontWeight.w600,
+            color: AppColors.ink,
+            decoration: TextDecoration.none,
+          ),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'iPhone：在 Safari 里点「分享」，再点「添加到主屏幕」，或下载 IPA 自签安装。\n'
+          'Android：下载 APK 安装。网页版无需下载也能继续使用。',
+          style: TextStyle(
+            fontSize: 13,
+            height: 1.55,
+            color: AppColors.secondary,
+            decoration: TextDecoration.none,
+          ),
+        ),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            Expanded(
+              child: _DownloadButton(
+                label: '下载 iOS 版',
+                icon: Icons.apple,
+                url: AppConfig.iosDownloadUrl,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _DownloadButton(
+                label: '下载 Android 版',
+                icon: Icons.android,
+                url: AppConfig.androidDownloadUrl,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _DownloadButton extends StatelessWidget {
+  const _DownloadButton({
+    required this.label,
+    required this.icon,
+    required this.url,
+  });
+
+  final String label;
+  final IconData icon;
+  final String url;
+
+  @override
+  Widget build(BuildContext context) {
+    return Pressable(
+      onTap: () => unawaited(openExternalLink(url)),
+      haptic: true,
+      scale: 0.97,
+      opacity: 0.92,
+      semanticLabel: label,
+      child: Container(
+        height: 48,
+        decoration: BoxDecoration(
+          color: AppColors.accentSoft,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: AppColors.glassBorder),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 17, color: AppColors.accentDeep),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.accentDeep,
+                  decoration: TextDecoration.none,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

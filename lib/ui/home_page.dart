@@ -459,7 +459,7 @@ class _GoalPaceCard extends StatelessWidget {
     if (hasPrediction) {
       final remaining = current - target;
       final remainingText = unit == WeightUnit.kilograms
-          ? '${formatNumber(remaining * 2)} 斤'
+          ? WeightUnit.jin.format(remaining)
           : unit.format(remaining);
       return '预计 ${DateFormat('M月d日').format(targetDate!)} 前后到达。还需减掉约 $remainingText，按近期日均缺口 ${formatCalories(deficit)} 大卡推算。';
     }

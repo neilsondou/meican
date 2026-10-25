@@ -284,7 +284,7 @@ class _WeightImportSheetState extends State<WeightImportSheet> {
             if (selectedUnit == null) ...[
               const SizedBox(height: 12),
               const _MessageBox(
-                message: '截图里没有写明单位。请先选择这些数字是公斤还是克，避免把 65.2 公斤当成 65.2 克。',
+                message: '截图里没有写明单位。请先选择这些数字是公斤还是市斤，两者刚好相差一倍。',
                 warning: true,
               ),
             ] else if (invalidRecords.isNotEmpty) ...[
@@ -501,12 +501,11 @@ class _RecordRow extends StatelessWidget {
   final VoidCallback onTap;
 
   String _rawValue(WeightUnit? unit) {
-    if (unit == WeightUnit.grams) return '${record.value.round()} 克';
     final rounded = (record.value * 10).roundToDouble() / 10;
     final text = rounded == rounded.roundToDouble()
         ? rounded.toInt().toString()
         : rounded.toStringAsFixed(1);
-    return unit == WeightUnit.kilograms ? '$text 公斤' : text;
+    return unit == null ? text : '$text ${unit.label}';
   }
 
   @override
