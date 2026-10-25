@@ -55,8 +55,9 @@ class GlmService {
   );
 
   static const Duration _timeout = Duration(seconds: 60);
-  static const String _visionModel = 'glm-4v-flash';
-  static const String _textModel = 'glm-4-flash';
+
+  /// GLM-4V-Flash 是免费的多模态模型，也支持纯文本请求，所有 AI 功能统一使用它。
+  static const String _model = 'glm-4v-flash';
 
   static const String _mealSystemPrompt = '''
 你是“每餐”的食物热量估算助手。根据照片和用户补充，估算实际吃掉的每种食物的可食部重量与总热量。
@@ -129,7 +130,7 @@ class GlmService {
 
   Future<String> advise({required Map<String, Object?> data}) async {
     final requestBody = <String, dynamic>{
-      'model': _textModel,
+      'model': _model,
       'messages': [
         {'role': 'system', 'content': _adviceSystemPrompt},
         {
@@ -157,7 +158,7 @@ class GlmService {
     }
 
     final requestBody = <String, dynamic>{
-      'model': _visionModel,
+      'model': _model,
       'messages': [
         {'role': 'system', 'content': systemPrompt},
         {
