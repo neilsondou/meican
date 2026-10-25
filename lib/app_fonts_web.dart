@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 
 /// 按顺序尝试，谁先成功就用谁；不并发请求，避免慢速网络下同时下载三份字体。
 const List<String> _cdnBases = [
-  'https://cdn.jsdmirror.com/gh/neilsondou/meican@main/assets/fonts/',
+  'https://cdn.jsdmirror.com/gh/neilsondou/meican@a734f6ec9e76349848d11b2de186078381ed8475/assets/fonts/',
   'https://jsd.onmicrosoft.cn/gh/neilsondou/meican@main/assets/fonts/',
   'https://fastly.jsdelivr.net/gh/neilsondou/meican@main/assets/fonts/',
 ];
