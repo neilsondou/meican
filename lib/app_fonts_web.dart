@@ -1,11 +1,10 @@
-import 'dart:async';
-
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
+/// 按顺序尝试，谁先成功就用谁；不并发请求，避免慢速网络下同时下载三份字体。
 const List<String> _cdnBases = [
-  'https://jsd.onmicrosoft.cn/gh/neilsondou/meican@main/assets/fonts/',
   'https://cdn.jsdmirror.com/gh/neilsondou/meican@main/assets/fonts/',
+  'https://jsd.onmicrosoft.cn/gh/neilsondou/meican@main/assets/fonts/',
   'https://fastly.jsdelivr.net/gh/neilsondou/meican@main/assets/fonts/',
 ];
 
@@ -32,8 +31,16 @@ Future<void> loadPlatformFonts() async {
 }
 
 Future<ByteData?> _loadFont(String file) async {
-  final fromCdn = await _raceCdns(file);
-  if (fromCdn != null) return fromCdn;
+  for (final base in _cdnBases) {
+    try {
+      final data = await _fetchFont(
+        Uri.parse('$base$file'),
+      ).timeout(const Duration(seconds: 6));
+      if (data != null) return data;
+    } catch (_) {
+      // 换下一个镜像。
+    }
+  }
   try {
     return await rootBundle
         .load('assets/fonts/$file')
@@ -43,28 +50,8 @@ Future<ByteData?> _loadFont(String file) async {
   }
 }
 
-/// 同时请求所有镜像，谁先返回有效字体就用谁，避免某个 CDN 变慢时排队等待。
-Future<ByteData?> _raceCdns(String file) {
-  final completer = Completer<ByteData?>();
-  var remaining = _cdnBases.length;
-  for (final base in _cdnBases) {
-    unawaited(() async {
-      ByteData? data;
-      try {
-        data = await _fetchFont(Uri.parse('$base$file'));
-      } catch (_) {
-        // 这个镜像不可用，等其它镜像或本地回退。
-      }
-      if (data != null && !completer.isCompleted) completer.complete(data);
-      remaining--;
-      if (remaining == 0 && !completer.isCompleted) completer.complete(null);
-    }());
-  }
-  return completer.future;
-}
-
 Future<ByteData?> _fetchFont(Uri uri) async {
-  final response = await http.get(uri).timeout(const Duration(seconds: 4));
+  final response = await http.get(uri).timeout(const Duration(seconds: 6));
   if (response.statusCode != 200 || response.bodyBytes.length <= 10000) {
     return null;
   }

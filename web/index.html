@@ -32,20 +32,18 @@
 
   <title>每餐</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="preload" href="main.dart.js" as="script" fetchpriority="high">
-  <!-- 字体走国内可访问的 jsDelivr 镜像，避免首帧前从 Vercel 慢速下载。 -->
-  <link rel="preconnect" href="https://jsd.onmicrosoft.cn" crossorigin>
+  <!-- Vercel 在国内很慢，首屏 JS、CanvasKit 和字体都走 jsDelivr 国内镜像。 -->
   <link rel="preconnect" href="https://cdn.jsdmirror.com" crossorigin>
   <link
     rel="preload"
-    href="https://jsd.onmicrosoft.cn/gh/neilsondou/meican@main/assets/fonts/MeicanSans-Regular.woff2"
+    href="https://cdn.jsdmirror.com/gh/neilsondou/meican@main/assets/fonts/MeicanSans-Regular.woff2"
     as="font"
     type="font/woff2"
     crossorigin
   >
   <link
     rel="preload"
-    href="https://jsd.onmicrosoft.cn/gh/neilsondou/meican@main/assets/fonts/MeicanSans-SemiBold.woff2"
+    href="https://cdn.jsdmirror.com/gh/neilsondou/meican@main/assets/fonts/MeicanSans-SemiBold.woff2"
     as="font"
     type="font/woff2"
     crossorigin
