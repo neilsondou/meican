@@ -5,6 +5,8 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 
+import 'ai_keys.dart';
+import 'app_config.dart';
 import 'models.dart';
 
 class GlmResult {
@@ -28,16 +30,30 @@ class GlmService {
     'https://open.bigmodel.cn/api/paas/v4/chat/completions',
   );
 
+  static const Duration _timeout = Duration(seconds: 60);
+
+  static const String _systemPrompt = '''
+你是“每餐”的食物热量估算助手。根据照片和用户补充，估算实际吃掉的每种食物的可食部重量与总热量。
+只输出一个合法 JSON 对象，不要输出 Markdown 代码围栏或任何额外文字：
+{"items":[{"name":"米饭","grams":150,"kcal":174}],"reply":"..."}
+
+估算规则：
+1. 找出画面中所有食物和饮品，包括主食、配菜、汤、酱料和饮料。不要漏掉油、糖、坚果、芝士、沙拉酱等高热量配料；不可见的烹饪油和糖计入对应菜品，不必单列。
+2. 用碗、盘子、餐具、手掌或包装等可见参照物估算分量。中式一小碗熟米饭约 130–180 克；一份家常菜约 150–250 克；一块手掌大的肉约 100–150 克。除非有证据，不要假设整份都吃完了。
+3. grams 只算可食部，骨头、壳、核、包装不计入。kcal 是当前 grams 下实际摄入的总热量，不是每 100 克热量。
+4. 必须结合做法：水煮、清蒸偏低；煎炒、红烧、油炸明显偏高。参考常见中国食物热量数据估算，热量取整数。
+5. 光线、遮挡或参照物不足时，取合理区间的中间值，不要编造看不见的食物。没有可辨认食物时 items 返回 []。
+6. 用户提出异议或补充时，以用户的描述为事实逐项重算；用户说的实际分量优先于照片观感。除非用户要求，否则不要新增照片之外的食物。
+7. 合并同名同做法的食物，名称保持简短。reply 不超过 60 个汉字，直接说明估算依据和最不确定的一项，不要使用“作为 AI”等套话。
+''';
+
   Future<GlmResult> analyze({
-    required String apiKey,
     required Uint8List bytes,
     required String mimeType,
     String instruction = '',
     List<MealItem> currentItems = const [],
+    String? proxyToken,
   }) async {
-    if (apiKey.trim().isEmpty) {
-      throw const GlmException('请先填写 API Key。');
-    }
     if (bytes.isEmpty) {
       throw const GlmException('图片为空，请重新选择图片。');
     }
@@ -45,96 +61,181 @@ class GlmService {
       throw const GlmException('无法确定图片格式，请重新选择图片。');
     }
 
-    final requestText = StringBuffer(
-      instruction.trim().isEmpty ? '请识别图片中的食物并估算热量。' : instruction.trim(),
-    );
-    if (currentItems.isNotEmpty) {
-      requestText
-        ..write('\n当前食物列表为：')
-        ..write(
-          jsonEncode(
-            currentItems
-                .map(
-                  (item) => {
-                    'name': item.name,
-                    'grams': item.grams,
-                    'kcal': item.kcal,
-                  },
-                )
-                .toList(),
-          ),
-        )
-        ..write(
-          '\n这是一次列表微调。请结合图片和要求修改，并返回覆盖当前列表的完整 items，'
-          '不要只返回新增或变化的项。',
-        );
-    }
-
-    final dataUrl = 'data:${mimeType.trim()};base64,${base64Encode(bytes)}';
     final requestBody = <String, dynamic>{
       'model': 'glm-4v-flash',
       'messages': [
-        {
-          'role': 'system',
-          'content':
-              '你是中文应用“每餐”的食物图像识别助手。只输出一个合法 JSON 对象，'
-              '不要输出 Markdown 代码围栏或任何其他文本。格式必须为 '
-              '{"items":[{"name":"米饭","grams":150,"kcal":174}],"reply":"..."}。'
-              'items 中每种食物都必须有名称、估算克数 grams 和热量 kcal。'
-              'kcal 必须是该食物在当前估算 grams 下的总热量，绝不能填每100克热量。'
-              '尽量给出合理克数，热量只作估算。reply 用简短中文说明结果或不确定性。',
-        },
+        {'role': 'system', 'content': _systemPrompt},
         {
           'role': 'user',
           'content': [
-            {'type': 'text', 'text': requestText.toString()},
+            {'type': 'text', 'text': _requestText(instruction, currentItems)},
             {
               'type': 'image_url',
-              'image_url': {'url': dataUrl},
+              'image_url': {
+                'url': 'data:${mimeType.trim()};base64,${base64Encode(bytes)}',
+              },
             },
           ],
         },
       ],
     };
 
-    late final http.Response response;
+    if (proxyToken != null && proxyToken.isNotEmpty) {
+      final response = await _postProxy(proxyToken, requestBody);
+      final status = response.statusCode;
+      if (status >= 200 && status < 300) {
+        return _decode(_responseText(response));
+      }
+      if (status == 401) {
+        throw const GlmException('登录已过期，请在「我的 > 云同步」重新登录。');
+      }
+      if (status == 429) {
+        throw const GlmException('图片识别服务当前请求较多，请稍后重试。');
+      }
+      if (status == 413) {
+        throw const GlmException('照片太大，请重新选择后再试。');
+      }
+      final detail = _errorDetail(_responseText(response));
+      throw GlmException(
+        '识别服务请求失败（HTTP $status）'
+        '${detail.isEmpty ? '，请稍后重试。' : '：$detail'}',
+      );
+    }
+
+    final keys = AiKeyPool.nextOrder();
+    if (keys.isEmpty) {
+      throw const GlmException('当前版本未启用图片识别服务，请安装配置后的版本。');
+    }
+
+    GlmException? retryable;
+    for (final key in keys) {
+      final response = await _post(key, requestBody);
+      final status = response.statusCode;
+
+      if (status >= 200 && status < 300) {
+        return _decode(_responseText(response));
+      }
+
+      if (_canRetryWithAnotherKey(status)) {
+        retryable = _statusException(status);
+        continue;
+      }
+
+      final detail = _errorDetail(_responseText(response));
+      throw GlmException(
+        '识别服务请求失败（HTTP $status）'
+        '${detail.isEmpty ? '，请稍后重试。' : '：$detail'}',
+      );
+    }
+
+    throw retryable ?? const GlmException('图片识别服务暂时不可用，请稍后重试。');
+  }
+
+  static String _requestText(String instruction, List<MealItem> currentItems) {
+    final trimmed = instruction.trim();
+    if (currentItems.isEmpty) {
+      return trimmed.isEmpty ? '请识别照片中的全部食物，估算实际吃掉的克数与总热量。' : trimmed;
+    }
+
+    final current = jsonEncode(
+      currentItems
+          .map(
+            (item) => {
+              'name': item.name,
+              'grams': item.grams,
+              'kcal': item.kcal,
+            },
+          )
+          .toList(),
+    );
+    return '用户对上一版估算的修正说明：'
+        '${trimmed.isEmpty ? '用户认为估多了，请重新核对实际摄入量。' : trimmed}'
+        '\n上一版清单：$current'
+        '\n请按用户说明重新估算，返回修正后的完整 items。保留不受影响的项目，'
+        '修改受影响的项目；除非用户要求，否则不要新增照片中不存在的食物。'
+        'reply 直接说明这次调整了什么。';
+  }
+
+  Future<http.Response> _postProxy(
+    String token,
+    Map<String, dynamic> requestBody,
+  ) async {
     try {
-      response = await http
+      return await http
           .post(
-            _endpoint,
+            AppConfig.api('/api/ai/analyze'),
             headers: {
-              'Authorization': 'Bearer ${apiKey.trim()}',
+              'Authorization': 'Bearer $token',
               'Content-Type': 'application/json',
             },
             body: jsonEncode(requestBody),
           )
-          .timeout(const Duration(seconds: 60));
+          .timeout(const Duration(seconds: 90));
+    } on TimeoutException {
+      throw const GlmException('图片识别超时，请检查网络后重试。');
+    } on http.ClientException {
+      throw const GlmException('无法连接图片识别服务，请检查网络后重试。');
+    } on Exception {
+      throw const GlmException('图片识别请求失败，请稍后重试。');
+    }
+  }
+
+  static String _responseText(http.Response response) {
+    try {
+      return utf8.decode(response.bodyBytes);
+    } on FormatException {
+      return response.body;
+    }
+  }
+
+  Future<http.Response> _post(
+    String apiKey,
+    Map<String, dynamic> requestBody,
+  ) async {
+    try {
+      return await http
+          .post(
+            _endpoint,
+            headers: {
+              'Authorization': 'Bearer $apiKey',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode(requestBody),
+          )
+          .timeout(_timeout);
     } on TimeoutException {
       throw const GlmException('图片识别超时，请检查网络后重试。');
     } on http.ClientException {
       if (kIsWeb) {
-        throw const GlmException(
-          '网页预览受浏览器跨域限制，无法直接连接 AI 识别。请使用手机或桌面 App 拍照识别。',
-        );
+        throw const GlmException('网页预览受浏览器跨域限制，无法直接连接图片识别服务。请使用手机 App。');
       }
       throw const GlmException('无法连接图片识别服务，请检查网络后重试。');
     } on Exception {
       throw const GlmException('图片识别请求失败，请稍后重试。');
     }
+  }
 
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      if (response.statusCode == 401 || response.statusCode == 403) {
-        throw const GlmException('API Key 无效或没有访问权限，请检查后重试。');
-      }
-      final detail = _errorDetail(response.body);
-      throw GlmException(
-        '识别服务请求失败（HTTP ${response.statusCode}）'
-        '${detail.isEmpty ? '，请稍后重试。' : '：$detail'}',
-      );
+  static bool _canRetryWithAnotherKey(int status) {
+    return status == 401 ||
+        status == 403 ||
+        status == 408 ||
+        status == 429 ||
+        status >= 500;
+  }
+
+  static GlmException _statusException(int status) {
+    if (status == 401 || status == 403) {
+      return const GlmException('图片识别服务配置已失效，请安装最新版本后重试。');
     }
+    if (status == 429) {
+      return const GlmException('图片识别服务当前请求较多，请稍后重试。');
+    }
+    return const GlmException('图片识别服务暂时不可用，请稍后重试。');
+  }
 
+  GlmResult _decode(String body) {
     try {
-      final root = _asMap(jsonDecode(response.body), '服务响应');
+      final root = _asMap(jsonDecode(body), '服务响应');
       if (root.containsKey('error')) {
         throw GlmException('识别服务返回错误：${_errorMessage(root['error'])}');
       }
@@ -186,39 +287,51 @@ class GlmService {
 
     final root = _asMap(decoded, '识别结果');
     final rawItems = root['items'];
-    final reply = root['reply'];
-    if (rawItems is! List || reply is! String) {
-      throw const GlmException('识别结果缺少 items 或 reply 字段，请重试。');
+    if (rawItems is! List) {
+      throw const GlmException('识别结果缺少 items 字段，请重试。');
     }
+    final reply = root['reply'] is String
+        ? (root['reply'] as String).trim()
+        : '';
 
     final timestamp = DateTime.now().microsecondsSinceEpoch;
     final items = <MealItem>[];
     for (var index = 0; index < rawItems.length; index++) {
       final item = _asMap(rawItems[index], '食物');
-      final name = item['name'];
-      final grams = item['grams'];
-      final kcal = item['kcal'];
-      if (name is! String || name.trim().isEmpty) {
+      final name = item['name'] is String
+          ? (item['name'] as String).trim()
+          : '';
+      final grams = _toDouble(item['grams'] ?? item['weight']);
+      final kcal = _toDouble(item['kcal'] ?? item['calories']);
+      if (name.isEmpty) {
         throw const GlmException('识别结果中的食物名称无效，请重试。');
       }
-      if (grams is! num ||
+      if (grams == null ||
           !grams.isFinite ||
           grams < 0 ||
-          kcal is! num ||
+          kcal == null ||
           !kcal.isFinite ||
           kcal < 0) {
         throw const GlmException('识别结果中的克数或热量无效，请重试。');
       }
       items.add(
         MealItem(
-          id: 'glm_${timestamp}_$index',
-          name: name.trim(),
-          grams: grams.toDouble(),
-          kcal: kcal.toDouble(),
+          id: 'ai_${timestamp}_$index',
+          name: name,
+          grams: grams,
+          kcal: kcal,
         ),
       );
     }
-    return GlmResult(items: items, reply: reply.trim());
+    return GlmResult(items: items, reply: reply);
+  }
+
+  static double? _toDouble(Object? value) {
+    if (value is num) return value.toDouble();
+    if (value is String) {
+      return double.tryParse(value.replaceAll(RegExp(r'[^0-9.\-]'), ''));
+    }
+    return null;
   }
 
   static Map<String, dynamic> _asMap(Object? value, String label) {
@@ -248,7 +361,7 @@ class GlmService {
         return root['message'] as String;
       }
     } on FormatException {
-      // HTTP 状态码已足以向用户说明失败，无需显示非 JSON 响应体。
+      // HTTP 状态码已足以说明失败，无需展示非 JSON 响应体。
     }
     return '';
   }

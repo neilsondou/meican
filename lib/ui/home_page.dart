@@ -105,8 +105,13 @@ class HomePage extends StatelessWidget {
                       MealSummaryTile(
                         meal: meal,
                         showChevron: true,
-                        onTap: () =>
-                            showMealDetail(context, meal, state: state),
+                        onTap: () => showMealDetail(
+                          context,
+                          meal,
+                          state: state,
+                          onEdit: () =>
+                              showRecordSheet(context, state, meal: meal),
+                        ),
                       ),
                   ],
                 ),

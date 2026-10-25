@@ -32,6 +32,13 @@
 
   <title>每餐</title>
   <link rel="manifest" href="manifest.json">
+  <style>
+    /* 浏览器会给 Flutter Web 的语义节点加上链接下划线。 */
+    flt-semantics,
+    flt-semantics * {
+      text-decoration: none !important;
+    }
+  </style>
 </head>
 <body>
   <!--

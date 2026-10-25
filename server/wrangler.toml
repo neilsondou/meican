@@ -1,0 +1,14 @@
+name = "meican-api"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "meican"
+database_id = "00000000-0000-0000-0000-000000000000"
+
+# 可选：额外允许的来源，逗号分隔。
+# 默认已允许 https://meican.dou.asia、localhost 和 *.vercel.app。
+# [vars]
+# ALLOWED_ORIGINS = "https://example.com"

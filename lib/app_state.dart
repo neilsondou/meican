@@ -4,14 +4,18 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'models.dart';
+import 'sync_merge.dart';
 
 class AppState extends ChangeNotifier {
   static const String _storageKey = 'meican_state_v1';
 
   final List<MealEntry> meals = [];
   final List<WeightEntry> weights = [];
+  final Map<String, DateTime> deletedMeals = {};
+  final Map<String, DateTime> deletedWeights = {};
   UserProfile profile = const UserProfile();
-  String apiKey = '';
+  DateTime? profileUpdatedAt;
+  int mutationVersion = 0;
   bool ready = false;
 
   Future<void> load() async {
@@ -49,7 +53,13 @@ class AppState extends ChangeNotifier {
           ..clear()
           ..addAll(loadedWeights);
         profile = loadedProfile;
-        apiKey = data['apiKey'] as String? ?? '';
+        profileUpdatedAt = _dateOrNull(data['profileUpdatedAt']);
+        deletedMeals
+          ..clear()
+          ..addAll(_tombstones(data['deletedMeals']));
+        deletedWeights
+          ..clear()
+          ..addAll(_tombstones(data['deletedWeights']));
       } catch (_) {
         // 损坏的本地数据不应阻止应用启动；保留安全的默认状态。
       }
@@ -60,39 +70,105 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> addMeal(MealEntry meal) async {
-    meals.add(meal);
-    notifyListeners();
+    final now = DateTime.now();
+    meals.add(meal.copyWith(updatedAt: now));
+    deletedMeals.remove(meal.id);
+    _markMutation();
+    await _persist();
+  }
+
+  Future<void> updateMeal(MealEntry meal) async {
+    final now = DateTime.now();
+    final updated = meal.copyWith(updatedAt: now);
+    final index = meals.indexWhere((entry) => entry.id == meal.id);
+    if (index == -1) {
+      meals.add(updated);
+    } else {
+      meals[index] = updated;
+    }
+    deletedMeals.remove(meal.id);
+    _markMutation();
     await _persist();
   }
 
   Future<void> deleteMeal(String id) async {
-    meals.removeWhere((meal) => meal.id == id);
-    notifyListeners();
+    final index = meals.indexWhere((meal) => meal.id == id);
+    if (index == -1) return;
+    meals.removeAt(index);
+    deletedMeals[id] = DateTime.now();
+    _markMutation();
     await _persist();
   }
 
   Future<void> addWeight(WeightEntry weight) async {
+    final now = DateTime.now();
+    final replaced = weights
+        .where((entry) => _isSameDay(entry.date, weight.date))
+        .map((entry) => entry.id)
+        .toList();
+    for (final id in replaced) {
+      if (id != weight.id) deletedWeights[id] = now;
+    }
     weights.removeWhere((entry) => _isSameDay(entry.date, weight.date));
-    weights.add(weight);
+    weights.add(weight.copyWith(updatedAt: now));
+    deletedWeights.remove(weight.id);
     profile = profile.copyWith(weightKg: weight.kg);
-    notifyListeners();
+    profileUpdatedAt = now;
+    _markMutation();
     await _persist();
   }
 
   Future<void> deleteWeight(String id) async {
-    weights.removeWhere((weight) => weight.id == id);
-    notifyListeners();
+    final index = weights.indexWhere((weight) => weight.id == id);
+    if (index == -1) return;
+    weights.removeAt(index);
+    deletedWeights[id] = DateTime.now();
+    _markMutation();
     await _persist();
   }
 
   Future<void> updateProfile(UserProfile value) async {
     profile = value;
-    notifyListeners();
+    profileUpdatedAt = DateTime.now();
+    _markMutation();
     await _persist();
   }
 
-  Future<void> setApiKey(String value) async {
-    apiKey = value.trim();
+  SyncSnapshot toSyncSnapshot() {
+    return SyncSnapshot(
+      meals: [
+        for (final meal in meals)
+          meal.updatedAt == null ? meal.copyWith(updatedAt: meal.date) : meal,
+      ],
+      weights: [
+        for (final weight in weights)
+          weight.updatedAt == null
+              ? weight.copyWith(updatedAt: weight.date)
+              : weight,
+      ],
+      profile: profile,
+      profileUpdatedAt: profileUpdatedAt,
+      deletedMeals: Map.of(deletedMeals),
+      deletedWeights: Map.of(deletedWeights),
+    );
+  }
+
+  /// 应用云端合并结果，不计入本机改动，避免重复上传。
+  Future<void> applySyncSnapshot(SyncSnapshot snapshot) async {
+    meals
+      ..clear()
+      ..addAll(snapshot.meals);
+    weights
+      ..clear()
+      ..addAll(snapshot.weights);
+    profile = snapshot.profile;
+    profileUpdatedAt = snapshot.profileUpdatedAt;
+    deletedMeals
+      ..clear()
+      ..addAll(snapshot.deletedMeals);
+    deletedWeights
+      ..clear()
+      ..addAll(snapshot.deletedWeights);
     notifyListeners();
     await _persist();
   }
@@ -133,15 +209,45 @@ class AppState extends ChangeNotifier {
     return (remainingKg * NutritionMath.kcalPerKgFat / averageDeficit).ceil();
   }
 
+  void _markMutation() {
+    mutationVersion++;
+    notifyListeners();
+  }
+
   Future<void> _persist() async {
     final preferences = await SharedPreferences.getInstance();
     final data = <String, dynamic>{
       'meals': meals.map((meal) => meal.toJson()).toList(),
       'weights': weights.map((weight) => weight.toJson()).toList(),
       'profile': profile.toJson(),
-      'apiKey': apiKey,
+      'profileUpdatedAt': profileUpdatedAt?.toIso8601String(),
+      'deletedMeals': {
+        for (final entry in deletedMeals.entries)
+          entry.key: entry.value.toIso8601String(),
+      },
+      'deletedWeights': {
+        for (final entry in deletedWeights.entries)
+          entry.key: entry.value.toIso8601String(),
+      },
     };
     await preferences.setString(_storageKey, jsonEncode(data));
+  }
+
+  static DateTime? _dateOrNull(Object? value) {
+    if (value is String && value.isNotEmpty) return DateTime.tryParse(value);
+    return null;
+  }
+
+  static Map<String, DateTime> _tombstones(Object? value) {
+    if (value is! Map) return const {};
+    final result = <String, DateTime>{};
+    for (final entry in value.entries) {
+      final date = _dateOrNull(entry.value);
+      if (date != null && entry.key is String) {
+        result[entry.key as String] = date;
+      }
+    }
+    return result;
   }
 
   static bool _isSameDay(DateTime first, DateTime second) {

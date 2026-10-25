@@ -44,6 +44,7 @@ class MealEntry {
     required this.items,
     this.note = '',
     this.source = '',
+    this.updatedAt,
   });
 
   final String id;
@@ -52,6 +53,7 @@ class MealEntry {
   final List<MealItem> items;
   final String note;
   final String source;
+  final DateTime? updatedAt;
 
   double get totalKcal => items.fold(0, (sum, item) => sum + item.kcal);
 
@@ -62,6 +64,7 @@ class MealEntry {
     List<MealItem>? items,
     String? note,
     String? source,
+    DateTime? updatedAt,
   }) {
     return MealEntry(
       id: id ?? this.id,
@@ -70,24 +73,26 @@ class MealEntry {
       items: items ?? this.items,
       note: note ?? this.note,
       source: source ?? this.source,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'date': date.toIso8601String(),
+      'date': date.toUtc().toIso8601String(),
       'mealType': mealType,
       'items': items.map((item) => item.toJson()).toList(),
       'note': note,
       'source': source,
+      if (updatedAt != null) 'updatedAt': updatedAt!.toUtc().toIso8601String(),
     };
   }
 
   factory MealEntry.fromJson(Map<String, dynamic> json) {
     return MealEntry(
       id: json['id'] as String,
-      date: DateTime.parse(json['date'] as String),
+      date: DateTime.parse(json['date'] as String).toLocal(),
       mealType: json['mealType'] as String,
       items: (json['items'] as List<dynamic>)
           .map(
@@ -98,36 +103,62 @@ class MealEntry {
           .toList(),
       note: json['note'] as String? ?? '',
       source: json['source'] as String? ?? '',
+      updatedAt: _dateOrNull(json['updatedAt']),
     );
   }
 }
 
 class WeightEntry {
-  const WeightEntry({required this.id, required this.date, required this.kg});
+  const WeightEntry({
+    required this.id,
+    required this.date,
+    required this.kg,
+    this.updatedAt,
+  });
 
   final String id;
   final DateTime date;
   final double kg;
+  final DateTime? updatedAt;
 
-  WeightEntry copyWith({String? id, DateTime? date, double? kg}) {
+  WeightEntry copyWith({
+    String? id,
+    DateTime? date,
+    double? kg,
+    DateTime? updatedAt,
+  }) {
     return WeightEntry(
       id: id ?? this.id,
       date: date ?? this.date,
       kg: kg ?? this.kg,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 
   Map<String, dynamic> toJson() {
-    return {'id': id, 'date': date.toIso8601String(), 'kg': kg};
+    return {
+      'id': id,
+      'date': date.toUtc().toIso8601String(),
+      'kg': kg,
+      if (updatedAt != null) 'updatedAt': updatedAt!.toUtc().toIso8601String(),
+    };
   }
 
   factory WeightEntry.fromJson(Map<String, dynamic> json) {
     return WeightEntry(
       id: json['id'] as String,
-      date: DateTime.parse(json['date'] as String),
+      date: DateTime.parse(json['date'] as String).toLocal(),
       kg: (json['kg'] as num).toDouble(),
+      updatedAt: _dateOrNull(json['updatedAt']),
     );
   }
+}
+
+DateTime? _dateOrNull(Object? value) {
+  if (value is String && value.isNotEmpty) {
+    return DateTime.tryParse(value)?.toLocal();
+  }
+  return null;
 }
 
 class UserProfile {

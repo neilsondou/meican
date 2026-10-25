@@ -6,7 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../ai_keys.dart';
 import '../app_state.dart';
+import '../cloud_sync.dart';
 import '../glm_service.dart';
 import '../models.dart';
 import 'components.dart';
@@ -15,9 +17,10 @@ import 'record_page.dart';
 import 'theme.dart';
 
 class AiCapturePage extends StatefulWidget {
-  const AiCapturePage({super.key, required this.state});
+  const AiCapturePage({super.key, required this.state, required this.cloud});
 
   final AppState state;
+  final CloudSync cloud;
 
   @override
   State<AiCapturePage> createState() => _AiCapturePageState();
@@ -36,6 +39,9 @@ class _AiCapturePageState extends State<AiCapturePage> {
 
   double get total => items.fold(0, (sum, item) => sum + item.kcal);
 
+  bool get canRecognize =>
+      kIsWeb ? widget.cloud.isLoggedIn : AiKeyPool.isConfigured;
+
   static String _currentMealType() {
     final hour = DateTime.now().hour;
     if (hour < 10) return '早餐';
@@ -51,9 +57,12 @@ class _AiCapturePageState extends State<AiCapturePage> {
   }
 
   Future<void> chooseImage(ImageSource source) async {
-    if (widget.state.apiKey.trim().isEmpty) {
-      await showApiKeySheet(context, widget.state);
-      if (widget.state.apiKey.trim().isEmpty || !mounted) return;
+    if (!canRecognize) {
+      showAppMessage(
+        context,
+        kIsWeb ? '请先在「我的 > 云同步」登录，再使用照片识别。' : '当前版本未启用图片识别服务，请安装配置后的版本。',
+      );
+      return;
     }
     try {
       final image = await picker.pickImage(
@@ -109,18 +118,14 @@ class _AiCapturePageState extends State<AiCapturePage> {
   Future<void> analyze({String instruction = ''}) async {
     final bytes = imageBytes;
     if (bytes == null || busy) return;
-    if (widget.state.apiKey.trim().isEmpty) {
-      await showApiKeySheet(context, widget.state);
-      if (widget.state.apiKey.trim().isEmpty || !mounted) return;
-    }
     setState(() => busy = true);
     try {
       final result = await GlmService().analyze(
-        apiKey: widget.state.apiKey.trim(),
         bytes: bytes,
         mimeType: mimeType,
         instruction: instruction,
         currentItems: instruction.isEmpty ? const [] : items,
+        proxyToken: kIsWeb ? widget.cloud.token : null,
       );
       if (!mounted) return;
       setState(() {
@@ -145,6 +150,19 @@ class _AiCapturePageState extends State<AiCapturePage> {
     if (instruction.isEmpty || busy) return;
     FocusScope.of(context).unfocus();
     await analyze(instruction: instruction);
+  }
+
+  Future<void> openArgueSheet() async {
+    if (busy || items.isEmpty) return;
+    FocusScope.of(context).unfocus();
+    final instruction = await showAppSheet<String>(
+      context,
+      _ArgueSheet(items: items, initialText: refinement.text),
+    );
+    final trimmed = instruction?.trim() ?? '';
+    if (!mounted || trimmed.isEmpty) return;
+    refinement.text = trimmed;
+    await analyze(instruction: trimmed);
   }
 
   Future<void> editItem(int index) async {
@@ -192,7 +210,7 @@ class _AiCapturePageState extends State<AiCapturePage> {
     if (items.isEmpty) {
       return '这张照片没有找到食物。换一张光线更均匀、食物完整入镜的照片试试。';
     }
-    return '轻点任意一项，可以调整克数与热量；确认之后，保存到今天的记录。';
+    return '轻点任意一项调整克数与热量；不同意估算，就和 AI 犟嘴，让它按你的说法重算。';
   }
 
   @override
@@ -218,7 +236,7 @@ class _AiCapturePageState extends State<AiCapturePage> {
                   padding: EdgeInsets.fromLTRB(24, 68, 24, showDock ? 190 : 32),
                   children: [
                     PageHeader(
-                      eyebrow: hasImage ? '先核对，再保存' : 'AI 图片识别',
+                      eyebrow: hasImage ? '先核对，再保存' : null,
                       title: hasImage ? '这一餐' : '拍照识别',
                     ),
                     const SizedBox(height: 14),
@@ -230,9 +248,9 @@ class _AiCapturePageState extends State<AiCapturePage> {
                         color: AppColors.secondary,
                       ),
                     ),
-                    if (kIsWeb && !hasImage) ...[
+                    if (kIsWeb && !hasImage && !widget.cloud.isLoggedIn) ...[
                       const SizedBox(height: 16),
-                      const _WebPreviewNotice(),
+                      const _WebLoginNotice(),
                     ],
                     const SizedBox(height: 28),
                     if (!hasImage) ...[
@@ -240,23 +258,12 @@ class _AiCapturePageState extends State<AiCapturePage> {
                         onCamera: () => chooseImage(ImageSource.camera),
                         onGallery: () => chooseImage(ImageSource.gallery),
                       ),
-                      if (widget.state.apiKey.trim().isEmpty) ...[
+                      if (!kIsWeb && !AiKeyPool.isConfigured) ...[
                         const SizedBox(height: 16),
-                        _KeyNotice(
-                          onTap: () => showApiKeySheet(context, widget.state),
-                        ),
+                        const _ServiceNotice(),
                       ],
                       const SizedBox(height: 32),
                       const _UsageNote(),
-                      const SizedBox(height: 20),
-                      const Text(
-                        '照片只会发送到你配置的 AI 接口 · AI 估算仅供参考',
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          height: 1.6,
-                          color: AppColors.tertiary,
-                        ),
-                      ),
                     ] else ...[
                       _ImagePreview(
                         bytes: imageBytes!,
@@ -307,6 +314,8 @@ class _AiCapturePageState extends State<AiCapturePage> {
                         ),
                       ],
                       if (!busy && items.isNotEmpty) ...[
+                        _ArgueAction(onTap: openArgueSheet),
+                        const SizedBox(height: 24),
                         _ItemsHeader(count: items.length, total: total),
                         const SizedBox(height: 12),
                         GroupedCard(
@@ -336,7 +345,8 @@ class _AiCapturePageState extends State<AiCapturePage> {
                         ),
                         const SizedBox(height: 20),
                         const Text(
-                          '轻点食物可以调整克数与热量。觉得整张清单不对，就在下方说「米饭只有半碗」，会重新估算并覆盖当前清单。',
+                          '轻点食物可以调整克数与热量。不同意估算，就点上面的「和ai犟嘴（我没吃这么多）」，'
+                          'AI 会按你的说法重新估算并覆盖当前清单。',
                           style: TextStyle(
                             fontSize: 12,
                             height: 1.65,
@@ -347,21 +357,7 @@ class _AiCapturePageState extends State<AiCapturePage> {
                     ],
                   ],
                 ),
-                Positioned(
-                  top: 8,
-                  left: 14,
-                  right: 14,
-                  child: Row(
-                    children: [
-                      const AppBackButton(),
-                      const Spacer(),
-                      _ApiKeyButton(
-                        configured: widget.state.apiKey.trim().isNotEmpty,
-                        onTap: () => showApiKeySheet(context, widget.state),
-                      ),
-                    ],
-                  ),
-                ),
+                Positioned(top: 8, left: 14, child: AppBackButton()),
               ],
             ),
           ),
@@ -480,56 +476,39 @@ class _CaptureCard extends StatelessWidget {
   }
 }
 
-class _KeyNotice extends StatelessWidget {
-  const _KeyNotice({required this.onTap});
-
-  final VoidCallback onTap;
+class _ServiceNotice extends StatelessWidget {
+  const _ServiceNotice();
 
   @override
   Widget build(BuildContext context) {
-    return SurfaceCard(
-      onTap: onTap,
-      borderColor: const Color(0x33FFFFFF),
-      padding: const EdgeInsets.fromLTRB(20, 18, 18, 18),
-      child: Row(
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: const Color(0x12FFFFFF),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.glassBorder),
+      ),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const IconBadge(
-            icon: CupertinoIcons.lock_shield,
-            color: AppColors.accentDeep,
-            background: AppColors.accentSoft,
-            size: 42,
-            iconSize: 18,
-          ),
-          const SizedBox(width: 14),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '还差一个 API Key',
-                  style: TextStyle(
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.ink,
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  '用你自己的 API Key，只保存在这台设备。',
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    height: 1.5,
-                    color: AppColors.secondary,
-                  ),
-                ),
-              ],
+          Padding(
+            padding: EdgeInsets.only(top: 1),
+            child: Icon(
+              CupertinoIcons.exclamationmark_circle,
+              size: 15,
+              color: AppColors.tertiary,
             ),
           ),
-          const SizedBox(width: 10),
-          const Icon(
-            CupertinoIcons.chevron_right,
-            size: 14,
-            color: AppColors.tertiary,
+          SizedBox(width: 9),
+          Expanded(
+            child: Text(
+              '当前安装包未启用图片识别服务，请安装配置后的版本。',
+              style: TextStyle(
+                fontSize: 12,
+                height: 1.6,
+                color: AppColors.secondary,
+              ),
+            ),
           ),
         ],
       ),
@@ -558,7 +537,8 @@ class _UsageNote extends StatelessWidget {
           ),
           SizedBox(height: 8),
           Text(
-            '先看到的是一份可编辑的清单：食物、克数、热量都能改。觉得哪里不对，直接在下方告诉每餐，整张清单会按你的话重新估算。',
+            '先看到的是一份可编辑的清单：食物、克数、热量都能改。觉得估多了，点「和ai犟嘴（我没吃这么多）」，'
+            '说清实际分量，AI 会按你的说法重算整张清单。',
             style: TextStyle(
               fontSize: 13,
               height: 1.7,
@@ -571,8 +551,8 @@ class _UsageNote extends StatelessWidget {
   }
 }
 
-class _WebPreviewNotice extends StatelessWidget {
-  const _WebPreviewNotice();
+class _WebLoginNotice extends StatelessWidget {
+  const _WebLoginNotice();
 
   @override
   Widget build(BuildContext context) {
@@ -589,7 +569,7 @@ class _WebPreviewNotice extends StatelessWidget {
           Padding(
             padding: EdgeInsets.only(top: 1),
             child: Icon(
-              CupertinoIcons.globe,
+              CupertinoIcons.lock,
               size: 15,
               color: AppColors.tertiary,
             ),
@@ -597,7 +577,7 @@ class _WebPreviewNotice extends StatelessWidget {
           SizedBox(width: 9),
           Expanded(
             child: Text(
-              '网页预览受浏览器跨域限制，无法直接连接 AI 服务。拍照识别请使用手机或桌面 App。',
+              '网页端需要先登录云同步，才能使用照片识别。前往「我的 > 云同步」登录。',
               style: TextStyle(
                 fontSize: 12,
                 height: 1.6,
@@ -607,42 +587,6 @@ class _WebPreviewNotice extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _ApiKeyButton extends StatelessWidget {
-  const _ApiKeyButton({required this.configured, required this.onTap});
-
-  final bool configured;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        CircleIconButton(
-          icon: CupertinoIcons.lock_shield,
-          onTap: onTap,
-          tooltip: 'API Key',
-          size: 40,
-          iconSize: 18,
-        ),
-        Positioned(
-          right: 4,
-          top: 4,
-          child: Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: configured ? AppColors.accent : AppColors.warm,
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.background, width: 1.6),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
@@ -838,6 +782,71 @@ class _ReplyNote extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ArgueAction extends StatelessWidget {
+  const _ArgueAction({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Pressable(
+      onTap: onTap,
+      haptic: true,
+      scale: 0.985,
+      semanticLabel: '和ai犟嘴（我没吃这么多）',
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+        decoration: BoxDecoration(
+          color: AppColors.accentSoft,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0x33FFFFFF)),
+        ),
+        child: const Row(
+          children: [
+            Icon(
+              CupertinoIcons.chat_bubble_2,
+              size: 18,
+              color: AppColors.accentDeep,
+            ),
+            SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '和ai犟嘴（我没吃这么多）',
+                    style: TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.accentDeep,
+                    ),
+                  ),
+                  SizedBox(height: 3),
+                  Text(
+                    '告诉 AI 实际吃了多少，它会按你的说法重算整张清单。',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      height: 1.4,
+                      color: AppColors.secondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(width: 8),
+            Icon(
+              CupertinoIcons.chevron_right,
+              size: 13,
+              color: AppColors.accentDeep,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1147,23 +1156,22 @@ class _SaveAction extends StatelessWidget {
   }
 }
 
-Future<void> showApiKeySheet(BuildContext context, AppState state) {
-  return showAppSheet<void>(context, _ApiKeySheet(state: state));
-}
+class _ArgueSheet extends StatefulWidget {
+  const _ArgueSheet({required this.items, required this.initialText});
 
-class _ApiKeySheet extends StatefulWidget {
-  const _ApiKeySheet({required this.state});
-
-  final AppState state;
+  final List<MealItem> items;
+  final String initialText;
 
   @override
-  State<_ApiKeySheet> createState() => _ApiKeySheetState();
+  State<_ArgueSheet> createState() => _ArgueSheetState();
 }
 
-class _ApiKeySheetState extends State<_ApiKeySheet> {
-  late final controller = TextEditingController(text: widget.state.apiKey);
-  bool reveal = false;
-  bool saving = false;
+class _ArgueSheetState extends State<_ArgueSheet> {
+  static const _suggestions = ['米饭只吃了一半', '肉只吃了一半', '没喝汤', '少油少糖'];
+
+  late final controller = TextEditingController(text: widget.initialText);
+
+  double get total => widget.items.fold(0, (sum, item) => sum + item.kcal);
 
   @override
   void dispose() {
@@ -1171,27 +1179,23 @@ class _ApiKeySheetState extends State<_ApiKeySheet> {
     super.dispose();
   }
 
-  Future<void> save() async {
-    if (saving) return;
-    final value = controller.text.trim();
-    if (value.isEmpty) {
-      showAppMessage(context, '请输入 API Key');
-      return;
-    }
-    setState(() => saving = true);
-    await widget.state.setApiKey(value);
-    if (!mounted) return;
-    showAppMessage(context, 'API Key 已保存在本机');
-    Navigator.pop(context);
+  void useSuggestion(String suggestion) {
+    final current = controller.text.trim();
+    final next = current.isEmpty ? suggestion : '$current，$suggestion';
+    controller.value = TextEditingValue(
+      text: next,
+      selection: TextSelection.collapsed(offset: next.length),
+    );
+    setState(() {});
   }
 
-  Future<void> remove() async {
-    if (saving) return;
-    setState(() => saving = true);
-    await widget.state.setApiKey('');
-    if (!mounted) return;
-    showAppMessage(context, '已移除 API Key');
-    Navigator.pop(context);
+  void submit() {
+    final instruction = controller.text.trim();
+    if (instruction.isEmpty) {
+      showAppMessage(context, '先说说实际吃了多少');
+      return;
+    }
+    Navigator.pop(context, instruction);
   }
 
   @override
@@ -1203,84 +1207,69 @@ class _ApiKeySheetState extends State<_ApiKeySheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SheetHeading(
-            title: 'API Key',
-            subtitle: '用于 AI 图片识别，密钥只保存在这台设备。',
+            title: '和 AI 犟嘴',
+            subtitle: '把实际吃法说清楚，AI 会按你的说法重算整张清单。',
             onClose: () => Navigator.pop(context),
           ),
-          TextField(
-            controller: controller,
-            obscureText: !reveal,
-            autocorrect: false,
-            enableSuggestions: false,
-            autofocus: widget.state.apiKey.isEmpty,
-            decoration: InputDecoration(
-              hintText: '粘贴 API Key',
-              suffixIcon: Padding(
-                padding: const EdgeInsets.only(right: 6),
-                child: Pressable(
-                  onTap: () => setState(() => reveal = !reveal),
-                  scale: 0.88,
-                  semanticLabel: reveal ? '隐藏密钥' : '显示密钥',
-                  child: SizedBox.square(
-                    dimension: 40,
-                    child: Center(
-                      child: Icon(
-                        reveal ? CupertinoIcons.eye_slash : CupertinoIcons.eye,
-                        size: 19,
-                        color: AppColors.tertiary,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          const Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
             children: [
-              Padding(
-                padding: EdgeInsets.only(top: 1),
-                child: Icon(
-                  CupertinoIcons.lock,
-                  size: 12,
-                  color: AppColors.tertiary,
-                ),
+              const Icon(
+                CupertinoIcons.square_list,
+                size: 14,
+                color: AppColors.tertiary,
               ),
-              SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  '不会写入日志，也不会上传到其他服务。图片只在识别时发送到你填写的 AI 接口。',
-                  style: TextStyle(
-                    fontSize: 11.5,
-                    height: 1.6,
-                    color: AppColors.tertiary,
-                  ),
+              const SizedBox(width: 7),
+              Text(
+                '当前 ${widget.items.length} 项 · ${formatCalories(total)} 大卡',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.secondary,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 20),
-          PrimaryButton(label: '保存', busy: saving, onPressed: save),
-          if (widget.state.apiKey.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Center(
-              child: Pressable(
-                onTap: saving ? null : remove,
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Text(
-                    '移除密钥',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.warning,
-                    ),
-                  ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: controller,
+            autofocus: true,
+            minLines: 3,
+            maxLines: 5,
+            maxLength: 140,
+            onChanged: (_) => setState(() {}),
+            decoration: const InputDecoration(
+              hintText: '例如：米饭只吃了半碗，鸡腿去皮，汤没喝完。',
+              counterText: '',
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final suggestion in _suggestions)
+                ChoicePill(
+                  label: suggestion,
+                  selected: controller.text.contains(suggestion),
+                  onTap: () => useSuggestion(suggestion),
                 ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          PrimaryButton(
+            label: '让 AI 重新算',
+            onPressed: controller.text.trim().isEmpty ? null : submit,
+          ),
+          const SizedBox(height: 10),
+          const Center(
+            child: Text(
+              '会覆盖当前清单，之后仍可逐项修改。',
+              style: TextStyle(
+                fontSize: 11.5,
+                height: 1.5,
+                color: AppColors.tertiary,
               ),
             ),
-          ],
+          ),
         ],
       ),
     );

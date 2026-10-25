@@ -9,6 +9,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 import 'app_state.dart';
+import 'cloud_sync.dart';
 import 'ui/ai_page.dart';
 import 'ui/components.dart';
 import 'ui/home_page.dart';
@@ -22,23 +23,46 @@ Future<void> main() async {
   await initializeDateFormatting('zh_CN');
   SystemChrome.setSystemUIOverlayStyle(appSystemOverlay);
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-  runApp(MeiCanApp(state: AppState()));
+  final state = AppState();
+  runApp(MeiCanApp(state: state, cloud: CloudSync(state)));
 }
 
 class MeiCanApp extends StatefulWidget {
-  const MeiCanApp({super.key, required this.state});
+  MeiCanApp({super.key, required this.state, CloudSync? cloud})
+    : cloud = cloud ?? CloudSync(state);
 
   final AppState state;
+  final CloudSync cloud;
 
   @override
   State<MeiCanApp> createState() => _MeiCanAppState();
 }
 
-class _MeiCanAppState extends State<MeiCanApp> {
+class _MeiCanAppState extends State<MeiCanApp> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    unawaited(widget.state.load());
+    WidgetsBinding.instance.addObserver(this);
+    unawaited(_boot());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && widget.state.ready) {
+      unawaited(widget.cloud.syncNow());
+    }
+  }
+
+  Future<void> _boot() async {
+    await widget.state.load();
+    await widget.cloud.init();
+    unawaited(widget.cloud.syncOnLaunch());
   }
 
   @override
@@ -60,15 +84,16 @@ class _MeiCanAppState extends State<MeiCanApp> {
         value: appSystemOverlay,
         child: child ?? const SizedBox.shrink(),
       ),
-      home: _Root(state: widget.state),
+      home: _Root(state: widget.state, cloud: widget.cloud),
     );
   }
 }
 
 class _Root extends StatelessWidget {
-  const _Root({required this.state});
+  const _Root({required this.state, required this.cloud});
 
   final AppState state;
+  final CloudSync cloud;
 
   @override
   Widget build(BuildContext context) {
@@ -82,7 +107,11 @@ class _Root extends StatelessWidget {
           switchInCurve: Curves.easeOut,
           switchOutCurve: Curves.easeIn,
           child: state.ready
-              ? AppShell(key: const ValueKey('shell'), state: state)
+              ? AppShell(
+                  key: const ValueKey('shell'),
+                  state: state,
+                  cloud: cloud,
+                )
               : const LaunchView(key: ValueKey('launch')),
         );
       },
@@ -142,9 +171,10 @@ class LaunchView extends StatelessWidget {
 }
 
 class AppShell extends StatefulWidget {
-  const AppShell({super.key, required this.state});
+  const AppShell({super.key, required this.state, required this.cloud});
 
   final AppState state;
+  final CloudSync cloud;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -152,23 +182,37 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   int index = 0;
-  final Set<int> _visited = {0};
+  late final PageController _pageController = PageController(
+    initialPage: index,
+  );
 
   void select(int value) {
     if (value == index) return;
     HapticFeedback.selectionClick();
-    setState(() {
-      index = value;
-      _visited.add(value);
-    });
+    setState(() => index = value);
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _pageController.jumpToPage(value);
+    } else {
+      _pageController.animateToPage(
+        value,
+        duration: const Duration(milliseconds: 380),
+        curve: Curves.fastEaseInToSlowEaseOut,
+      );
+    }
   }
 
   void openCamera() {
     Navigator.of(context).push(
       CupertinoPageRoute<void>(
-        builder: (_) => AiCapturePage(state: widget.state),
+        builder: (_) => AiCapturePage(state: widget.state, cloud: widget.cloud),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   @override
@@ -188,21 +232,34 @@ class _AppShellState extends State<AppShell> {
                 child: AnimatedBuilder(
                   animation: widget.state,
                   builder: (context, _) {
-                    final pages = <Widget>[
-                      HomePage(
-                        state: widget.state,
-                        onCamera: openCamera,
-                        onOpenRecord: () => select(1),
-                        onOpenProgress: () => select(2),
-                      ),
-                      RecordPage(state: widget.state, onCamera: openCamera),
-                      ProgressPage(state: widget.state),
-                      SettingsPage(state: widget.state),
-                    ];
-                    return _TabViewport(
-                      index: index,
-                      visited: _visited,
-                      children: pages,
+                    return PageView(
+                      controller: _pageController,
+                      physics: const NeverScrollableScrollPhysics(),
+                      children: [
+                        _KeepAlivePage(
+                          child: HomePage(
+                            state: widget.state,
+                            onCamera: openCamera,
+                            onOpenRecord: () => select(1),
+                            onOpenProgress: () => select(2),
+                          ),
+                        ),
+                        _KeepAlivePage(
+                          child: RecordPage(
+                            state: widget.state,
+                            onCamera: openCamera,
+                          ),
+                        ),
+                        _KeepAlivePage(
+                          child: ProgressPage(state: widget.state),
+                        ),
+                        _KeepAlivePage(
+                          child: SettingsPage(
+                            state: widget.state,
+                            cloud: widget.cloud,
+                          ),
+                        ),
+                      ],
                     );
                   },
                 ),
@@ -227,119 +284,24 @@ class _AppShellState extends State<AppShell> {
   }
 }
 
-class _TabViewport extends StatefulWidget {
-  const _TabViewport({
-    required this.index,
-    required this.visited,
-    required this.children,
-  });
+class _KeepAlivePage extends StatefulWidget {
+  const _KeepAlivePage({required this.child});
 
-  final int index;
-  final Set<int> visited;
-  final List<Widget> children;
+  final Widget child;
 
   @override
-  State<_TabViewport> createState() => _TabViewportState();
+  State<_KeepAlivePage> createState() => _KeepAlivePageState();
 }
 
-class _TabViewportState extends State<_TabViewport>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 420),
-    value: 1,
-  );
-  late final Animation<double> _curve = CurvedAnimation(
-    parent: _controller,
-    curve: Curves.fastEaseInToSlowEaseOut,
-  );
-  late int _current = widget.index;
-  int? _previous;
-  bool _forward = true;
-
+class _KeepAlivePageState extends State<_KeepAlivePage>
+    with AutomaticKeepAliveClientMixin {
   @override
-  void initState() {
-    super.initState();
-    _controller.addStatusListener((status) {
-      if (status == AnimationStatus.completed && _previous != null && mounted) {
-        setState(() => _previous = null);
-      }
-    });
-  }
-
-  @override
-  void didUpdateWidget(covariant _TabViewport oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.index != widget.index) {
-      _previous = _current;
-      _forward = widget.index > _current;
-      _current = widget.index;
-      _controller.stop();
-      if (MediaQuery.disableAnimationsOf(context)) {
-        _previous = null;
-        _controller.value = 1;
-      } else {
-        _controller.forward(from: 0);
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  Offset _offsetFor(int page, double t) {
-    if (_previous == null || t >= 1) return Offset.zero;
-    final direction = _forward ? 1.0 : -1.0;
-    if (page == _current) {
-      return Offset(direction * 0.26 * (1 - t), 0);
-    }
-    if (page == _previous) {
-      return Offset(-direction * 0.08 * t, 0);
-    }
-    return Offset.zero;
-  }
+  bool get wantKeepAlive => true;
 
   @override
   Widget build(BuildContext context) {
-    return ClipRect(
-      child: AnimatedBuilder(
-        animation: _curve,
-        builder: (context, _) {
-          final t = _curve.value;
-          return Stack(
-            fit: StackFit.expand,
-            children: [
-              for (
-                var pageIndex = 0;
-                pageIndex < widget.children.length;
-                pageIndex++
-              )
-                KeyedSubtree(
-                  key: ValueKey('tab-$pageIndex'),
-                  child: Offstage(
-                    offstage: pageIndex != _current && pageIndex != _previous,
-                    child: IgnorePointer(
-                      ignoring: pageIndex != _current,
-                      child: TickerMode(
-                        enabled: pageIndex == _current,
-                        child: FractionalTranslation(
-                          translation: _offsetFor(pageIndex, t),
-                          child: widget.visited.contains(pageIndex)
-                              ? widget.children[pageIndex]
-                              : const SizedBox.shrink(),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          );
-        },
-      ),
-    );
+    super.build(context);
+    return widget.child;
   }
 }
 

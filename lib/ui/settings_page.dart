@@ -1,7 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../app_state.dart';
+import '../cloud_sync.dart';
 import '../export_service.dart';
 import '../models.dart';
 import 'ai_page.dart';
@@ -9,9 +11,10 @@ import 'components.dart';
 import 'theme.dart';
 
 class SettingsPage extends StatefulWidget {
-  const SettingsPage({super.key, required this.state});
+  const SettingsPage({super.key, required this.state, required this.cloud});
 
   final AppState state;
+  final CloudSync cloud;
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -64,22 +67,6 @@ class _SettingsPageState extends State<SettingsPage> {
             GroupedRow(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 19),
               leading: const IconBadge(
-                icon: CupertinoIcons.lock_shield,
-                color: AppColors.accentDeep,
-                background: AppColors.accentSoft,
-                size: 40,
-                iconSize: 18,
-              ),
-              title: 'API Key',
-              subtitle: state.apiKey.isEmpty
-                  ? '还没有设置，拍照识别暂时不可用'
-                  : '已保存在这台设备，只用于图片识别',
-              detail: state.apiKey.isEmpty ? '未设置' : '已设置',
-              onTap: () => showApiKeySheet(context, state),
-            ),
-            GroupedRow(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 19),
-              leading: const IconBadge(
                 icon: CupertinoIcons.camera_viewfinder,
                 color: AppColors.accentDeep,
                 background: AppColors.accentSoft,
@@ -91,6 +78,15 @@ class _SettingsPageState extends State<SettingsPage> {
               onTap: () => _openCapture(context, state),
             ),
           ],
+        ),
+        const SizedBox(height: 44),
+        const SectionHeader(title: '同步'),
+        AnimatedBuilder(
+          animation: widget.cloud,
+          builder: (context, _) => _CloudSyncCard(
+            cloud: widget.cloud,
+            onTap: () => showCloudSyncSheet(context, widget.cloud),
+          ),
         ),
         const SizedBox(height: 44),
         const SectionHeader(title: '导出'),
@@ -131,11 +127,11 @@ class _SettingsPageState extends State<SettingsPage> {
           child: Column(
             children: [
               Text(
-                '每餐',
+                'Mei Can',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  letterSpacing: 5,
+                  letterSpacing: 3,
                   color: AppColors.secondary,
                 ),
               ),
@@ -158,7 +154,9 @@ class _SettingsPageState extends State<SettingsPage> {
 
   void _openCapture(BuildContext context, AppState state) {
     Navigator.of(context).push(
-      CupertinoPageRoute<void>(builder: (_) => AiCapturePage(state: state)),
+      CupertinoPageRoute<void>(
+        builder: (_) => AiCapturePage(state: state, cloud: widget.cloud),
+      ),
     );
   }
 }
@@ -593,6 +591,415 @@ class _PreviewStat extends StatelessWidget {
             fontWeight: FontWeight.w600,
             color: AppColors.ink,
             fontFeatures: [FontFeature.tabularFigures()],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CloudSyncCard extends StatelessWidget {
+  const _CloudSyncCard({required this.cloud, required this.onTap});
+
+  final CloudSync cloud;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final lastSync = cloud.lastSyncAt;
+    final subtitle = !cloud.isLoggedIn
+        ? '登录后自动备份与合并本机记录'
+        : lastSync == null
+        ? '已登录，等待首次同步'
+        : '最后同步 ${DateFormat('M月d日 HH:mm').format(lastSync)}';
+    return GroupedCard(
+      children: [
+        GroupedRow(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 19),
+          leading: IconBadge(
+            icon: cloud.isLoggedIn
+                ? CupertinoIcons.cloud_fill
+                : CupertinoIcons.cloud,
+            color: AppColors.accentDeep,
+            background: AppColors.accentSoft,
+            size: 40,
+            iconSize: 18,
+          ),
+          title: '云同步',
+          subtitle: subtitle,
+          detail: cloud.busy
+              ? '同步中'
+              : cloud.isLoggedIn
+              ? '已开启'
+              : '未登录',
+          onTap: onTap,
+        ),
+      ],
+    );
+  }
+}
+
+Future<void> showCloudSyncSheet(BuildContext context, CloudSync cloud) {
+  return showAppSheet<void>(context, _CloudSyncSheet(cloud: cloud));
+}
+
+class _CloudSyncSheet extends StatefulWidget {
+  const _CloudSyncSheet({required this.cloud});
+
+  final CloudSync cloud;
+
+  @override
+  State<_CloudSyncSheet> createState() => _CloudSyncSheetState();
+}
+
+class _CloudSyncSheetState extends State<_CloudSyncSheet> {
+  final username = TextEditingController();
+  final password = TextEditingController();
+  bool reveal = false;
+  bool submitting = false;
+  String? error;
+
+  @override
+  void dispose() {
+    username.dispose();
+    password.dispose();
+    super.dispose();
+  }
+
+  Future<void> login() async {
+    if (submitting || widget.cloud.busy) return;
+    FocusScope.of(context).unfocus();
+    setState(() {
+      submitting = true;
+      error = null;
+    });
+    try {
+      await widget.cloud.login(username.text, password.text);
+      if (mounted) password.clear();
+    } on CloudSyncException catch (exception) {
+      if (mounted) setState(() => error = exception.message);
+    } finally {
+      if (mounted) setState(() => submitting = false);
+    }
+  }
+
+  Future<void> logout() async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: '退出云同步？',
+      message: '本机记录不会被删除。重新登录后会再次与云端合并。',
+      confirmLabel: '退出',
+    );
+    if (!confirmed || !mounted) return;
+    await widget.cloud.logout();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: widget.cloud,
+      builder: (context, _) {
+        final cloud = widget.cloud;
+        return SingleChildScrollView(
+          padding: const EdgeInsets.only(bottom: 4),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SheetHeading(
+                title: '云同步',
+                subtitle: cloud.isLoggedIn
+                    ? '记录会在后台自动上传，其他设备登录后自动合并。'
+                    : '登录后，本机记录会在后台自动同步到你的云端。',
+                onClose: () => Navigator.pop(context),
+              ),
+              if (!cloud.isLoggedIn) ...[
+                const _SyncPrompt(),
+                const SizedBox(height: 18),
+                TextField(
+                  controller: username,
+                  enabled: !submitting,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  textInputAction: TextInputAction.next,
+                  decoration: const InputDecoration(labelText: '账号'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: password,
+                  enabled: !submitting,
+                  obscureText: !reveal,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => login(),
+                  decoration: InputDecoration(
+                    labelText: '密码',
+                    suffixIcon: Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: Pressable(
+                        onTap: () => setState(() => reveal = !reveal),
+                        scale: 0.88,
+                        semanticLabel: reveal ? '隐藏密码' : '显示密码',
+                        child: SizedBox.square(
+                          dimension: 40,
+                          child: Center(
+                            child: Icon(
+                              reveal
+                                  ? CupertinoIcons.eye_slash
+                                  : CupertinoIcons.eye,
+                              size: 19,
+                              color: AppColors.tertiary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                if (error != null) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    error!,
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      height: 1.5,
+                      color: AppColors.warning,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 18),
+                PrimaryButton(
+                  label: '登录并同步',
+                  busy: submitting || cloud.busy,
+                  onPressed: login,
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  '登录只保存在本机，不会影响本地记录。忘记账号密码请联系作者。',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    height: 1.6,
+                    color: AppColors.tertiary,
+                  ),
+                ),
+              ] else ...[
+                _SyncStatus(cloud: cloud),
+                const SizedBox(height: 18),
+                PrimaryButton(
+                  label: '立即同步',
+                  busy: cloud.busy,
+                  onPressed: cloud.busy
+                      ? null
+                      : () => cloud.syncNow(manual: true),
+                ),
+                const SizedBox(height: 6),
+                Center(
+                  child: Pressable(
+                    onTap: cloud.busy ? null : logout,
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      child: Text(
+                        '退出登录',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.warning,
+                          decoration: TextDecoration.none,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 18),
+              _SyncLogs(logs: cloud.logs),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _SyncPrompt extends StatelessWidget {
+  const _SyncPrompt();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      decoration: BoxDecoration(
+        color: AppColors.accentSoft,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0x2EFFFFFF)),
+      ),
+      child: const Row(
+        children: [
+          Icon(CupertinoIcons.lock, size: 16, color: AppColors.accentDeep),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              '想要账号密码请联系作者',
+              style: TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w600,
+                color: AppColors.accentDeep,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SyncStatus extends StatelessWidget {
+  const _SyncStatus({required this.cloud});
+
+  final CloudSync cloud;
+
+  @override
+  Widget build(BuildContext context) {
+    final lastSync = cloud.lastSyncAt;
+    return SurfaceCard(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const IconBadge(
+                icon: CupertinoIcons.cloud_fill,
+                color: AppColors.accentDeep,
+                background: AppColors.accentSoft,
+                size: 40,
+                iconSize: 18,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      cloud.username ?? '已登录',
+                      style: const TextStyle(
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      lastSync == null
+                          ? '尚未完成首次同步'
+                          : '最后同步 ${DateFormat('M月d日 HH:mm').format(lastSync)}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.secondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Tag(
+                label: cloud.busy ? '同步中' : '已开启',
+                color: AppColors.accentDeep,
+                background: AppColors.accentSoft,
+              ),
+            ],
+          ),
+          if (cloud.revision > 0) ...[
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 14),
+              child: HairLine(),
+            ),
+            Text(
+              '云端版本 ${cloud.revision} · 每次修改都会在后台自动上传',
+              style: const TextStyle(
+                fontSize: 11.5,
+                height: 1.5,
+                color: AppColors.tertiary,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _SyncLogs extends StatelessWidget {
+  const _SyncLogs({required this.logs});
+
+  final List<CloudLog> logs;
+
+  @override
+  Widget build(BuildContext context) {
+    final recent = logs.reversed.take(12).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('同步日志', style: AppTextStyles.eyebrow),
+        const SizedBox(height: 10),
+        SurfaceCard(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          child: recent.isEmpty
+              ? const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 6),
+                  child: Text(
+                    '还没有同步记录。',
+                    style: TextStyle(fontSize: 12.5, color: AppColors.tertiary),
+                  ),
+                )
+              : Column(
+                  children: [
+                    for (var index = 0; index < recent.length; index++) ...[
+                      if (index > 0) const SizedBox(height: 9),
+                      _SyncLogRow(log: recent[index]),
+                    ],
+                  ],
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SyncLogRow extends StatelessWidget {
+  const _SyncLogRow({required this.log});
+
+  final CloudLog log;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 1),
+          child: Text(
+            DateFormat('HH:mm:ss').format(log.time),
+            style: const TextStyle(
+              fontSize: 10.5,
+              color: AppColors.tertiary,
+              fontFeatures: [FontFeature.tabularFigures()],
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            log.message,
+            style: TextStyle(
+              fontSize: 12.5,
+              height: 1.45,
+              color: log.error ? AppColors.warning : AppColors.secondary,
+            ),
           ),
         ),
       ],

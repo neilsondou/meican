@@ -1,3 +1,5 @@
+# AI 识别密钥在 Codemagic 的应用环境变量中配置：
+# MEICAN_AI_KEYS = key1,key2,key3,key4（标记为 Secure，勿写入仓库）
 workflows:
   ios-unsigned:
     name: 每餐
@@ -11,8 +13,16 @@ workflows:
         script: flutter pub get
       - name: 检查
         script: flutter analyze && flutter test
+      - name: 检查 AI 服务配置
+        script: |
+          if [ -z "$MEICAN_AI_KEYS" ]; then
+            echo "缺少 MEICAN_AI_KEYS。请在 Codemagic → 应用 → Environment variables 添加该变量（多个密钥用逗号分隔），然后重新构建。"
+            exit 1
+          fi
       - name: 构建未签名 Release
-        script: flutter build ios --release --no-codesign
+        script: |
+          flutter build ios --release --no-codesign \
+            --dart-define=MEICAN_AI_KEYS="$MEICAN_AI_KEYS"
       - name: 打包未签名 IPA
         script: |
           mkdir -p build/ios/unsigned/Payload
@@ -32,7 +42,15 @@ workflows:
         script: flutter pub get
       - name: 检查
         script: flutter analyze && flutter test
+      - name: 检查 AI 服务配置
+        script: |
+          if [ -z "$MEICAN_AI_KEYS" ]; then
+            echo "缺少 MEICAN_AI_KEYS。请在 Codemagic → 应用 → Environment variables 添加该变量（多个密钥用逗号分隔），然后重新构建。"
+            exit 1
+          fi
       - name: 构建 APK
-        script: flutter build apk --release
+        script: |
+          flutter build apk --release \
+            --dart-define=MEICAN_AI_KEYS="$MEICAN_AI_KEYS"
     artifacts:
       - build/app/outputs/flutter-apk/app-release.apk

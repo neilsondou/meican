@@ -158,15 +158,29 @@ class MealSummaryTile extends StatelessWidget {
   }
 }
 
-void showMealDetail(BuildContext context, MealEntry meal, {AppState? state}) {
-  showAppSheet<void>(context, _MealDetailSheet(meal: meal, state: state));
+void showMealDetail(
+  BuildContext context,
+  MealEntry meal, {
+  AppState? state,
+  Future<MealEntry?> Function()? onEdit,
+}) {
+  showAppSheet<void>(
+    context,
+    _MealDetailSheet(meal: meal, state: state, onEdit: onEdit),
+  );
 }
 
 class _MealDetailSheet extends StatelessWidget {
-  const _MealDetailSheet({required this.meal, this.state});
+  const _MealDetailSheet({required this.meal, this.state, this.onEdit});
 
   final MealEntry meal;
   final AppState? state;
+  final Future<MealEntry?> Function()? onEdit;
+
+  Future<void> _edit(BuildContext context) async {
+    final result = await onEdit?.call();
+    if (result != null && context.mounted) Navigator.pop(context);
+  }
 
   Future<void> _delete(BuildContext context) async {
     final appState = state;
@@ -282,34 +296,86 @@ class _MealDetailSheet extends StatelessWidget {
             ),
           ],
           if (state != null) ...[
-            const SizedBox(height: 18),
-            Pressable(
-              onTap: () => _delete(context),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      CupertinoIcons.trash,
-                      size: 16,
-                      color: AppColors.danger,
+            const SizedBox(height: 22),
+            Row(
+              children: [
+                if (onEdit != null) ...[
+                  Expanded(
+                    child: _MealActionButton(
+                      icon: CupertinoIcons.pencil,
+                      label: '编辑这一餐',
+                      onTap: () => _edit(context),
                     ),
-                    SizedBox(width: 7),
-                    Text(
-                      '删除这条记录',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.danger,
-                      ),
-                    ),
-                  ],
+                  ),
+                  const SizedBox(width: 10),
+                ],
+                Expanded(
+                  child: _MealActionButton(
+                    icon: CupertinoIcons.trash,
+                    label: '删除',
+                    destructive: true,
+                    onTap: () => _delete(context),
+                  ),
                 ),
-              ),
+              ],
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _MealActionButton extends StatelessWidget {
+  const _MealActionButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.destructive = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool destructive;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = destructive ? AppColors.danger : AppColors.ink;
+    return Pressable(
+      onTap: onTap,
+      haptic: true,
+      scale: 0.97,
+      semanticLabel: label,
+      child: Container(
+        height: 48,
+        decoration: BoxDecoration(
+          color: destructive
+              ? AppColors.danger.withValues(alpha: 0.1)
+              : AppColors.glassStrong,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: destructive
+                ? AppColors.danger.withValues(alpha: 0.24)
+                : AppColors.glassBorder,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 15, color: color),
+            const SizedBox(width: 7),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: color,
+                decoration: TextDecoration.none,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

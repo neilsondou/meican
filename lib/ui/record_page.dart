@@ -161,8 +161,16 @@ class _RecordPageState extends State<RecordPage> {
                       MealSummaryTile(
                         meal: meal,
                         showChevron: true,
-                        onTap: () =>
-                            showMealDetail(context, meal, state: widget.state),
+                        onTap: () => showMealDetail(
+                          context,
+                          meal,
+                          state: widget.state,
+                          onEdit: () => showRecordSheet(
+                            context,
+                            widget.state,
+                            meal: meal,
+                          ),
+                        ),
                       ),
                   ],
                 ),
@@ -170,7 +178,7 @@ class _RecordPageState extends State<RecordPage> {
                 const Padding(
                   padding: EdgeInsets.fromLTRB(4, 14, 4, 0),
                   child: Text(
-                    '轻点某一餐，可以查看明细或删除。',
+                    '轻点某一餐，可以查看、编辑或删除。',
                     style: TextStyle(
                       fontSize: 12,
                       height: 1.5,
@@ -567,29 +575,42 @@ Future<MealEntry?> showRecordSheet(
   BuildContext context,
   AppState state, {
   DateTime? date,
+  MealEntry? meal,
 }) {
   return Navigator.of(context).push<MealEntry>(
     appSlideUpRoute(
-      builder: (_) =>
-          _RecordMealPage(state: state, date: date ?? DateTime.now()),
+      builder: (_) => _RecordMealPage(
+        state: state,
+        date: meal?.date ?? date ?? DateTime.now(),
+        existing: meal,
+      ),
     ),
   );
 }
 
 class _RecordMealPage extends StatefulWidget {
-  const _RecordMealPage({required this.state, required this.date});
+  const _RecordMealPage({
+    required this.state,
+    required this.date,
+    this.existing,
+  });
 
   final AppState state;
   final DateTime date;
+  final MealEntry? existing;
 
   @override
   State<_RecordMealPage> createState() => _RecordMealPageState();
 }
 
 class _RecordMealPageState extends State<_RecordMealPage> {
-  String mealType = _currentMealType();
-  final List<MealItem> items = [];
-  final noteController = TextEditingController();
+  late String mealType = widget.existing?.mealType ?? _currentMealType();
+  late final List<MealItem> items = List.of(
+    widget.existing?.items ?? const <MealItem>[],
+  );
+  late final noteController = TextEditingController(
+    text: widget.existing?.note ?? '',
+  );
   bool saving = false;
 
   static String _currentMealType() {
@@ -637,15 +658,20 @@ class _RecordMealPageState extends State<_RecordMealPage> {
   Future<void> save() async {
     if (items.isEmpty || saving) return;
     setState(() => saving = true);
+    final existing = widget.existing;
     final entry = MealEntry(
-      id: DateTime.now().microsecondsSinceEpoch.toString(),
-      date: widget.date,
+      id: existing?.id ?? DateTime.now().microsecondsSinceEpoch.toString(),
+      date: existing?.date ?? widget.date,
       mealType: mealType,
       items: List.unmodifiable(items),
       note: noteController.text.trim(),
-      source: 'manual',
+      source: existing?.source ?? 'manual',
     );
-    await widget.state.addMeal(entry);
+    if (existing == null) {
+      await widget.state.addMeal(entry);
+    } else {
+      await widget.state.updateMeal(entry);
+    }
     if (mounted) Navigator.of(context).pop(entry);
   }
 
@@ -683,7 +709,7 @@ class _RecordMealPageState extends State<_RecordMealPage> {
                           'M月d日 EEEE',
                           'zh_CN',
                         ).format(widget.date),
-                        title: '记一餐',
+                        title: widget.existing == null ? '记一餐' : '编辑这一餐',
                       ),
                       const SizedBox(height: 30),
                       const Text('哪一餐', style: AppTextStyles.eyebrow),
@@ -760,6 +786,7 @@ class _RecordMealPageState extends State<_RecordMealPage> {
                   total: total,
                   saving: saving,
                   canSave: items.isNotEmpty && !saving,
+                  label: widget.existing == null ? '保存这一餐' : '保存修改',
                   onSave: save,
                 ),
               ],
@@ -896,6 +923,7 @@ class _SaveDock extends StatelessWidget {
     required this.total,
     required this.saving,
     required this.canSave,
+    required this.label,
     required this.onSave,
   });
 
@@ -903,6 +931,7 @@ class _SaveDock extends StatelessWidget {
   final double total;
   final bool saving;
   final bool canSave;
+  final String label;
   final VoidCallback onSave;
 
   @override
@@ -947,7 +976,7 @@ class _SaveDock extends StatelessWidget {
                   ),
                 ),
                 PrimaryButton(
-                  label: '保存这一餐',
+                  label: label,
                   busy: saving,
                   onPressed: canSave ? onSave : null,
                 ),
