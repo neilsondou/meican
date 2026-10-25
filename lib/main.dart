@@ -22,22 +22,10 @@ import 'ui/theme.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('zh_CN');
-  await _preloadWebFont();
   SystemChrome.setSystemUIOverlayStyle(appSystemOverlay);
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   final state = AppState();
   runApp(MeiCanApp(state: state, cloud: CloudSync(state)));
-}
-
-/// 网页首帧前先注册中文字体，否则会先去下载 Google Fonts 的中文回退字体。
-Future<void> _preloadWebFont() async {
-  if (!kIsWeb) return;
-  try {
-    final loader = FontLoader('MeicanSans')
-      ..addFont(rootBundle.load('assets/fonts/MeicanSans-Regular.ttf'))
-      ..addFont(rootBundle.load('assets/fonts/MeicanSans-SemiBold.ttf'));
-    await loader.load();
-  } catch (_) {}
 }
 
 class MeiCanApp extends StatefulWidget {
@@ -369,7 +357,12 @@ class _FloatingTabBar extends StatelessWidget {
 
     final content = Stack(
       children: [
-        const Positioned.fill(child: ColoredBox(color: Color(0xE6000000))),
+        Positioned.fill(
+          child: ColoredBox(
+            // 网页端没有背景模糊，改为不透明避免下层内容透出来发灰。
+            color: kIsWeb ? const Color(0xFF000000) : const Color(0xE6000000),
+          ),
+        ),
         Positioned.fill(
           child: DecoratedBox(
             decoration: BoxDecoration(

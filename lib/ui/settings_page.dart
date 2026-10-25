@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../app_state.dart';
 import '../cloud_sync.dart';
-import '../export_service.dart';
+import '../export_service.dart' deferred as exporter;
 import '../models.dart';
 import 'components.dart';
 import 'theme.dart';
@@ -26,10 +26,11 @@ class _SettingsPageState extends State<SettingsPage> {
     if (exporting != null) return;
     setState(() => exporting = type);
     try {
+      await exporter.loadLibrary();
       if (type == 'CSV') {
-        await ExportService.exportCsv(widget.state);
+        await exporter.ExportService.exportCsv(widget.state);
       } else {
-        await ExportService.exportPdf(widget.state);
+        await exporter.ExportService.exportPdf(widget.state);
       }
     } catch (error) {
       if (mounted) {
