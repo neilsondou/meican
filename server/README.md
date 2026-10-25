@@ -2,9 +2,9 @@
 
 这个 Worker 提供三件事：
 
-- 两个私人账号的登录与会话
+- 两个私人账号的登录与会话（可选，仅用于云同步）
 - 全量快照同步（带版本号，冲突时由客户端合并后重试）
-- 网页端的 AI 图片识别代理（密钥只放在 Worker 的 Secret 中）
+- 网页端的 AI 图片识别代理（密钥只放在 Worker 的 Secret 中，匿名可用但按 IP 限流）
 
 客户端默认访问 `https://api.meican.dou.asia`。下面每一步都在 `server/` 目录执行。
 
@@ -38,6 +38,8 @@ database_id = "这里填命令输出的 ID"
 ```bash
 npx wrangler d1 execute meican --remote --file=schema.sql
 ```
+
+`ai_usage` 表用于网页端匿名识别的每小时限额。Worker 在没有这张表时也会自动创建一次；如果你更新了旧库，重新执行上面的 schema 命令或访问一次识别接口即可。
 
 ## 3. 写入两个账号
 
@@ -115,7 +117,7 @@ Worker 默认允许：
 | POST | `/api/logout` | 需要 Bearer Token |
 | GET | `/api/sync` | 读取云端快照与版本号 |
 | PUT | `/api/sync` | `{baseRevision,data}`，版本不一致返回 409 |
-| POST | `/api/ai/analyze` | 需要 Bearer Token，转发图片识别 |
+| POST | `/api/ai/analyze` | 转发图片识别；匿名可用，带 Bearer Token 时额度更高 |
 
 同一个账号在多个设备上同时改动时，客户端按每条记录的 `updatedAt`、删除墓碑和资料更新时间合并；合并完成后带最新版本号重新上传。
 
@@ -124,5 +126,7 @@ Worker 默认允许：
 - 仓库中没有任何 AI 密钥、账号或密码。
 - Token 只保存其 SHA-256 摘要；会话 30 天过期。
 - 登录失败按 IP 限制：15 分钟内最多 10 次。
-- AI 接口必须登录，且只接受 `data:image/...` 的内嵌图片。
+- AI 接口匿名可用，按 IP 限制每小时 20 次；登录用户按账号限制每小时 120 次。
+- AI 接口只接受 `data:image/...` 的内嵌图片，且仍然校验允许的来源；其他 Vercel 站点无法直接跨域调用。
+- 照片只在转发识别时经过 Worker，不写入 D1，也不记录图片内容。
 - 不要把 `.dev.vars`、Secret 导出文件或数据库导出提交到 GitHub。

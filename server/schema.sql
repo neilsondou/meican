@@ -31,3 +31,9 @@ CREATE TABLE IF NOT EXISTS login_guards (
   failures INTEGER NOT NULL,
   window_start TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS ai_usage (
+  subject TEXT PRIMARY KEY,
+  window_start INTEGER NOT NULL,
+  requests INTEGER NOT NULL
+);

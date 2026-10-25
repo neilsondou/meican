@@ -19,6 +19,7 @@ class ExportService {
       throw UnsupportedError('Web 端暂不支持 CSV 导出，请使用 PDF 导出或移动端。');
     }
 
+    final unit = state.profile.weightUnit;
     final rows = <List<Object>>[
       [
         '记录类型',
@@ -31,7 +32,7 @@ class ExportService {
         '热量(kcal)',
         '备注',
         '来源',
-        '体重(kg)',
+        '体重(${unit.symbol})',
       ],
     ];
 
@@ -56,7 +57,7 @@ class ExportService {
         '',
         '',
         '',
-        weight.kg,
+        unit.toDisplay(weight.kg),
       ]);
     }
 
@@ -72,6 +73,7 @@ class ExportService {
   static Future<void> exportPdf(AppState state) async {
     final font = await PdfGoogleFonts.notoSansSCRegular();
     final document = pw.Document();
+    final unit = state.profile.weightUnit;
     final sortedMeals = [...state.meals]
       ..sort((first, second) => first.date.compareTo(second.date));
     final sortedWeights = [...state.weights]
@@ -151,12 +153,12 @@ class ExportService {
             pw.Text('暂无体重记录')
           else
             pw.TableHelper.fromTextArray(
-              headers: ['日期', '体重(kg)'],
+              headers: ['日期', '体重(${unit.symbol})'],
               data: [
                 for (final weight in sortedWeights)
                   [
                     _dateFormat.format(weight.date),
-                    weight.kg.toStringAsFixed(1),
+                    unit.formatValue(weight.kg),
                   ],
               ],
               headerStyle: pw.TextStyle(

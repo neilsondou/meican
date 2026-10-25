@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -21,10 +22,22 @@ import 'ui/theme.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('zh_CN');
+  await _preloadWebFont();
   SystemChrome.setSystemUIOverlayStyle(appSystemOverlay);
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   final state = AppState();
   runApp(MeiCanApp(state: state, cloud: CloudSync(state)));
+}
+
+/// 网页首帧前先注册中文字体，否则会先去下载 Google Fonts 的中文回退字体。
+Future<void> _preloadWebFont() async {
+  if (!kIsWeb) return;
+  try {
+    final loader = FontLoader('MeicanSans')
+      ..addFont(rootBundle.load('assets/fonts/MeicanSans-Regular.ttf'))
+      ..addFont(rootBundle.load('assets/fonts/MeicanSans-SemiBold.ttf'));
+    await loader.load();
+  } catch (_) {}
 }
 
 class MeiCanApp extends StatefulWidget {
@@ -204,7 +217,7 @@ class _AppShellState extends State<AppShell> {
   void openCamera() {
     Navigator.of(context).push(
       CupertinoPageRoute<void>(
-        builder: (_) => AiCapturePage(state: widget.state, cloud: widget.cloud),
+        builder: (_) => AiCapturePage(state: widget.state),
       ),
     );
   }
@@ -354,64 +367,67 @@ class _FloatingTabBar extends StatelessWidget {
     const inset = 6.0;
     final itemWidth = (width - inset * 2) / items.length;
 
-    return Container(
-      width: width,
-      height: height,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(height / 2),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x80000000),
-            blurRadius: 36,
-            offset: Offset(0, 16),
+    final content = Stack(
+      children: [
+        const Positioned.fill(child: ColoredBox(color: Color(0xE6000000))),
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(height / 2),
+              border: Border.all(color: const Color(0x1FFFFFFF), width: 1),
+            ),
           ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(height / 2),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 26, sigmaY: 26),
-          child: Stack(
-            children: [
-              const Positioned.fill(
-                child: ColoredBox(color: Color(0xE6000000)),
-              ),
-              Positioned.fill(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(height / 2),
-                    border: Border.all(
-                      color: const Color(0x1FFFFFFF),
-                      width: 1,
-                    ),
-                  ),
+        ),
+        AnimatedPositioned(
+          duration: MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : const Duration(milliseconds: 380),
+          curve: Curves.easeOutCubic,
+          left: inset + itemWidth * index,
+          top: inset,
+          bottom: inset,
+          width: itemWidth,
+          child: const _SelectionPill(),
+        ),
+        Row(
+          children: [
+            for (var itemIndex = 0; itemIndex < items.length; itemIndex++)
+              Expanded(
+                child: _TabBarButton(
+                  item: items[itemIndex],
+                  selected: itemIndex == index,
+                  onTap: () => onChanged(itemIndex),
                 ),
               ),
-              AnimatedPositioned(
-                duration: MediaQuery.disableAnimationsOf(context)
-                    ? Duration.zero
-                    : const Duration(milliseconds: 380),
-                curve: Curves.easeOutCubic,
-                left: inset + itemWidth * index,
-                top: inset,
-                bottom: inset,
-                width: itemWidth,
-                child: const _SelectionPill(),
-              ),
-              Row(
-                children: [
-                  for (var itemIndex = 0; itemIndex < items.length; itemIndex++)
-                    Expanded(
-                      child: _TabBarButton(
-                        item: items[itemIndex],
-                        selected: itemIndex == index,
-                        onTap: () => onChanged(itemIndex),
-                      ),
-                    ),
+          ],
+        ),
+      ],
+    );
+
+    return RepaintBoundary(
+      child: Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(height / 2),
+          boxShadow: kIsWeb
+              ? null
+              : const [
+                  BoxShadow(
+                    color: Color(0x80000000),
+                    blurRadius: 36,
+                    offset: Offset(0, 16),
+                  ),
                 ],
-              ),
-            ],
-          ),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(height / 2),
+          child: kIsWeb
+              ? content
+              : BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 26, sigmaY: 26),
+                  child: content,
+                ),
         ),
       ),
     );
@@ -427,13 +443,15 @@ class _SelectionPill extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF1C1C1E),
         borderRadius: BorderRadius.circular(999),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x66000000),
-            blurRadius: 18,
-            offset: Offset(0, 6),
-          ),
-        ],
+        boxShadow: kIsWeb
+            ? null
+            : const [
+                BoxShadow(
+                  color: Color(0x66000000),
+                  blurRadius: 18,
+                  offset: Offset(0, 6),
+                ),
+              ],
       ),
     );
   }
@@ -475,6 +493,7 @@ class _TabBarButton extends StatelessWidget {
             duration: const Duration(milliseconds: 240),
             curve: Curves.easeOutCubic,
             style: TextStyle(
+              fontFamily: 'MeicanSans',
               fontSize: 10.5,
               height: 1.1,
               fontWeight: selected ? FontWeight.w600 : FontWeight.w500,

@@ -125,7 +125,7 @@ class SurfaceCard extends StatelessWidget {
           color: borderColor ?? AppColors.glassBorder,
           width: 1,
         ),
-        boxShadow: elevated ? AppShadows.card : null,
+        boxShadow: elevated && !kIsWeb ? AppShadows.card : null,
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(radius - 1),
@@ -450,13 +450,15 @@ class CircleIconButton extends StatelessWidget {
               color: borderColor ?? AppColors.glassBorder,
               width: 1,
             ),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x33000000),
-                blurRadius: 12,
-                offset: Offset(0, 4),
-              ),
-            ],
+            boxShadow: kIsWeb
+                ? null
+                : const [
+                    BoxShadow(
+                      color: Color(0x33000000),
+                      blurRadius: 12,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
           ),
           child: Icon(icon, size: iconSize, color: foreground),
         ),
@@ -501,13 +503,15 @@ class ActionPill extends StatelessWidget {
             color: filled ? const Color(0x66FFFFFF) : AppColors.glassBorder,
             width: 1,
           ),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x4D000000),
-              blurRadius: 26,
-              offset: Offset(0, 12),
-            ),
-          ],
+          boxShadow: kIsWeb
+              ? null
+              : const [
+                  BoxShadow(
+                    color: Color(0x4D000000),
+                    blurRadius: 26,
+                    offset: Offset(0, 12),
+                  ),
+                ],
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -569,13 +573,15 @@ class PrimaryButton extends StatelessWidget {
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(AppRadius.pill),
               border: Border.all(color: const Color(0x66FFFFFF), width: 1),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x59000000),
-                  blurRadius: 28,
-                  offset: Offset(0, 12),
-                ),
-              ],
+              boxShadow: kIsWeb
+                  ? null
+                  : const [
+                      BoxShadow(
+                        color: Color(0x59000000),
+                        blurRadius: 28,
+                        offset: Offset(0, 12),
+                      ),
+                    ],
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -656,7 +662,7 @@ class PillSegmented<T> extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: const Color(0xFF232326),
                     borderRadius: BorderRadius.circular(19),
-                    boxShadow: AppShadows.thumb,
+                    boxShadow: kIsWeb ? null : AppShadows.thumb,
                   ),
                 ),
               ),
@@ -679,6 +685,7 @@ class PillSegmented<T> extends StatelessWidget {
                             duration: const Duration(milliseconds: 240),
                             curve: Curves.easeOutCubic,
                             style: TextStyle(
+                              fontFamily: 'MeicanSans',
                               fontSize: 14,
                               fontWeight: option.value == value
                                   ? FontWeight.w600
@@ -1236,42 +1243,45 @@ class _GlassSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(AppRadius.sheet),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: const Color(0xF20C0C0D),
-            borderRadius: BorderRadius.circular(AppRadius.sheet),
-            border: Border.all(color: const Color(0x1FFFFFFF), width: 1),
-          ),
-          child: Material(
-            type: MaterialType.transparency,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(height: 10),
-                Container(
-                  width: 38,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: const Color(0x3DFFFFFF),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Flexible(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(22, 0, 22, 18),
-                    child: child,
-                  ),
-                ),
-              ],
+    final content = DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0xF20C0C0D),
+        borderRadius: BorderRadius.circular(AppRadius.sheet),
+        border: Border.all(color: const Color(0x1FFFFFFF), width: 1),
+      ),
+      child: Material(
+        type: MaterialType.transparency,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 10),
+            Container(
+              width: 38,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0x3DFFFFFF),
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-          ),
+            const SizedBox(height: 12),
+            Flexible(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(22, 0, 22, 18),
+                child: child,
+              ),
+            ),
+          ],
         ),
       ),
+    );
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadius.sheet),
+      child: kIsWeb
+          ? content
+          : BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+              child: content,
+            ),
     );
   }
 }
@@ -1374,6 +1384,7 @@ Future<DateTime?> showAppDatePicker(
                       brightness: Brightness.dark,
                       textTheme: CupertinoTextThemeData(
                         dateTimePickerTextStyle: TextStyle(
+                          fontFamily: 'MeicanSans',
                           fontSize: 20,
                           color: AppColors.ink,
                         ),
@@ -1462,71 +1473,76 @@ class _GlassAlert extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final content = Container(
+      padding: const EdgeInsets.fromLTRB(22, 24, 22, 18),
+      decoration: BoxDecoration(
+        color: const Color(0xE61A1A1C),
+        borderRadius: BorderRadius.circular(40),
+        boxShadow: kIsWeb
+            ? null
+            : const [
+                BoxShadow(
+                  color: Color(0x8C000000),
+                  blurRadius: 50,
+                  offset: Offset(0, 24),
+                ),
+              ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 18.5,
+              height: 1.3,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.3,
+              color: AppColors.ink,
+              decoration: TextDecoration.none,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            message,
+            style: const TextStyle(
+              fontSize: 14.5,
+              height: 1.5,
+              color: AppColors.secondary,
+              decoration: TextDecoration.none,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Expanded(
+                child: _AlertAction(
+                  label: '取消',
+                  onTap: () => Navigator.pop(context, false),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _AlertAction(
+                  label: confirmLabel,
+                  destructive: destructive,
+                  onTap: () => Navigator.pop(context, true),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
     return ClipRRect(
       borderRadius: BorderRadius.circular(40),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(22, 24, 22, 18),
-          decoration: BoxDecoration(
-            color: const Color(0xE61A1A1C),
-            borderRadius: BorderRadius.circular(40),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x8C000000),
-                blurRadius: 50,
-                offset: Offset(0, 24),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 18.5,
-                  height: 1.3,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: -0.3,
-                  color: AppColors.ink,
-                  decoration: TextDecoration.none,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                message,
-                style: const TextStyle(
-                  fontSize: 14.5,
-                  height: 1.5,
-                  color: AppColors.secondary,
-                  decoration: TextDecoration.none,
-                ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: _AlertAction(
-                      label: '取消',
-                      onTap: () => Navigator.pop(context, false),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _AlertAction(
-                      label: confirmLabel,
-                      destructive: destructive,
-                      onTap: () => Navigator.pop(context, true),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
+      child: kIsWeb
+          ? content
+          : BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+              child: content,
+            ),
     );
   }
 }
@@ -1613,6 +1629,35 @@ class _ToastBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bubble = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+      decoration: BoxDecoration(
+        color: const Color(0xF0141416),
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            CupertinoIcons.info_circle_fill,
+            size: 17,
+            color: AppColors.accentDeep,
+          ),
+          const SizedBox(width: 9),
+          Flexible(
+            child: Text(
+              message,
+              style: const TextStyle(
+                fontSize: 13.5,
+                height: 1.35,
+                fontWeight: FontWeight.w500,
+                color: AppColors.ink,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
       duration: const Duration(milliseconds: 260),
@@ -1632,48 +1677,24 @@ class _ToastBubble extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(22),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x73000000),
-              blurRadius: 30,
-              offset: Offset(0, 14),
-            ),
-          ],
+          boxShadow: kIsWeb
+              ? null
+              : const [
+                  BoxShadow(
+                    color: Color(0x73000000),
+                    blurRadius: 30,
+                    offset: Offset(0, 14),
+                  ),
+                ],
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(22),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 26, sigmaY: 26),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-              decoration: BoxDecoration(
-                color: const Color(0xF0141416),
-                borderRadius: BorderRadius.circular(22),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    CupertinoIcons.info_circle_fill,
-                    size: 17,
-                    color: AppColors.accentDeep,
-                  ),
-                  const SizedBox(width: 9),
-                  Flexible(
-                    child: Text(
-                      message,
-                      style: const TextStyle(
-                        fontSize: 13.5,
-                        height: 1.35,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.ink,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          child: kIsWeb
+              ? bubble
+              : BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 26, sigmaY: 26),
+                  child: bubble,
+                ),
         ),
       ),
     );

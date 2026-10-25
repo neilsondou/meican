@@ -338,10 +338,9 @@ class _GoalPaceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final weights = [...state.weights]
-      ..sort((first, second) => first.date.compareTo(second.date));
-    final current = weights.isEmpty ? state.profile.weightKg : weights.last.kg;
+    final current = state.currentWeightKg;
     final target = state.profile.targetWeightKg;
+    final unit = state.profile.weightUnit;
     final remainingKg = current - target;
     final days = state.predictDaysToTarget();
     final deficit = state.recentAverageDeficit();
@@ -392,11 +391,13 @@ class _GoalPaceCard extends StatelessWidget {
               const SizedBox(height: 14),
               Text(
                 _caption(
+                  current: current,
                   reached: reached,
                   hasPrediction: hasPrediction,
                   targetDate: targetDate,
                   deficit: deficit,
                   target: target,
+                  unit: unit,
                 ),
                 style: const TextStyle(
                   fontSize: 13.5,
@@ -407,15 +408,19 @@ class _GoalPaceCard extends StatelessWidget {
               const SizedBox(height: 22),
               Row(
                 children: [
-                  Text(
-                    '当前 ${formatNumber(current)} kg · 目标 ${formatNumber(target)} kg',
-                    style: const TextStyle(
-                      fontSize: 12.5,
-                      color: AppColors.tertiary,
-                      fontFeatures: [FontFeature.tabularFigures()],
+                  Expanded(
+                    child: Text(
+                      '当前 ${unit.format(current)} · 目标 ${unit.format(target)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        color: AppColors.tertiary,
+                        fontFeatures: [FontFeature.tabularFigures()],
+                      ),
                     ),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 8),
                   const Text(
                     '看趋势',
                     style: TextStyle(
@@ -440,17 +445,23 @@ class _GoalPaceCard extends StatelessWidget {
   }
 
   String _caption({
+    required double current,
     required bool reached,
     required bool hasPrediction,
     required DateTime? targetDate,
     required double deficit,
     required double target,
+    required WeightUnit unit,
   }) {
     if (reached) {
-      return '当前 ${formatNumber(state.profile.weightKg)} kg，已经比目标 ${formatNumber(target)} kg 更轻。保持现在的节奏就好。';
+      return '当前 ${unit.format(current)}，已经比目标 ${unit.format(target)} 更轻。保持现在的节奏就好。';
     }
     if (hasPrediction) {
-      return '预计 ${DateFormat('M月d日').format(targetDate!)} 前后到达。还需减掉约 ${formatNumber((state.profile.weightKg - target) * 2)} 斤，按近期日均缺口 ${formatCalories(deficit)} 大卡推算。';
+      final remaining = current - target;
+      final remainingText = unit == WeightUnit.kilograms
+          ? '${formatNumber(remaining * 2)} 斤'
+          : unit.format(remaining);
+      return '预计 ${DateFormat('M月d日').format(targetDate!)} 前后到达。还需减掉约 $remainingText，按近期日均缺口 ${formatCalories(deficit)} 大卡推算。';
     }
     return '连续记录几天饮食后，会按近期的热量缺口，推算到达目标的日子。';
   }

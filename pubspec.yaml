@@ -39,3 +39,12 @@ flutter_launcher_icons:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/fonts/OFL.txt
+  fonts:
+    - family: MeicanSans
+      fonts:
+        - asset: assets/fonts/MeicanSans-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/MeicanSans-SemiBold.ttf
+          weight: 600

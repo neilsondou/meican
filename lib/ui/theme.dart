@@ -188,6 +188,7 @@ ThemeData buildAppTheme() {
   return ThemeData(
     useMaterial3: true,
     colorScheme: scheme,
+    fontFamily: 'MeicanSans',
     brightness: Brightness.dark,
     scaffoldBackgroundColor: AppColors.background,
     canvasColor: AppColors.background,
@@ -298,26 +299,31 @@ ThemeData buildAppTheme() {
       modalBackgroundColor: Colors.transparent,
       elevation: 0,
     ),
-    cupertinoOverrideTheme: const CupertinoThemeData(
+    cupertinoOverrideTheme: CupertinoThemeData(
       brightness: Brightness.dark,
       primaryColor: AppColors.accentDeep,
-      barBackgroundColor: Color(0xE60E0E10),
+      barBackgroundColor: const Color(0xE60E0E10),
       scaffoldBackgroundColor: AppColors.background,
       textTheme: CupertinoTextThemeData(
         navTitleTextStyle: TextStyle(
+          fontFamily: 'MeicanSans',
           fontSize: 17,
           fontWeight: FontWeight.w600,
           letterSpacing: -0.3,
           color: AppColors.ink,
         ),
-        navLargeTitleTextStyle: AppTextStyles.largeTitle,
-        textStyle: AppTextStyles.body,
+        navLargeTitleTextStyle: AppTextStyles.largeTitle.copyWith(
+          fontFamily: 'MeicanSans',
+        ),
+        textStyle: AppTextStyles.body.copyWith(fontFamily: 'MeicanSans'),
         pickerTextStyle: TextStyle(
+          fontFamily: 'MeicanSans',
           fontSize: 21,
           fontWeight: FontWeight.w500,
           color: AppColors.ink,
         ),
         actionTextStyle: TextStyle(
+          fontFamily: 'MeicanSans',
           fontSize: 17,
           fontWeight: FontWeight.w500,
           color: AppColors.accentDeep,

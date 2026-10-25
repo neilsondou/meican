@@ -100,20 +100,63 @@ class AppState extends ChangeNotifier {
     await _persist();
   }
 
-  Future<void> addWeight(WeightEntry weight) async {
-    final now = DateTime.now();
-    final replaced = weights
-        .where((entry) => _isSameDay(entry.date, weight.date))
-        .map((entry) => entry.id)
-        .toList();
-    for (final id in replaced) {
-      if (id != weight.id) deletedWeights[id] = now;
+  List<WeightEntry> get sortedWeights {
+    return List<WeightEntry>.of(weights)
+      ..sort((first, second) => first.date.compareTo(second.date));
+  }
+
+  WeightEntry? get latestWeight {
+    if (weights.isEmpty) return null;
+    return sortedWeights.last;
+  }
+
+  double get currentWeightKg => latestWeight?.kg ?? profile.weightKg;
+
+  WeightEntry? weightOnDay(DateTime day) {
+    for (final entry in weights) {
+      if (_isSameDay(entry.date, day)) return entry;
     }
-    weights.removeWhere((entry) => _isSameDay(entry.date, weight.date));
-    weights.add(weight.copyWith(updatedAt: now));
-    deletedWeights.remove(weight.id);
-    profile = profile.copyWith(weightKg: weight.kg);
-    profileUpdatedAt = now;
+    return null;
+  }
+
+  Future<void> addWeight(WeightEntry weight) => upsertWeight(weight);
+
+  Future<void> upsertWeight(WeightEntry weight) async {
+    await importWeights([weight]);
+  }
+
+  /// 同一天只保留一条；补录旧日期不会覆盖比它更新的当前体重。
+  Future<void> importWeights(Iterable<WeightEntry> entries) async {
+    final now = DateTime.now();
+    var changed = false;
+    for (final weight in entries) {
+      final day = _dayAtNoon(weight.date);
+      final replaced = weights
+          .where(
+            (entry) =>
+                entry.id != weight.id && _isSameDay(entry.date, weight.date),
+          )
+          .map((entry) => entry.id)
+          .toList();
+      for (final id in replaced) {
+        deletedWeights[id] = now;
+      }
+      weights.removeWhere(
+        (entry) => entry.id != weight.id && _isSameDay(entry.date, weight.date),
+      );
+      final stored = weight.copyWith(date: day, updatedAt: now);
+      final index = weights.indexWhere((entry) => entry.id == weight.id);
+      if (index == -1) {
+        weights.add(stored);
+      } else {
+        weights[index] = stored;
+      }
+      deletedWeights.remove(weight.id);
+      changed = true;
+    }
+    if (!changed) return;
+    // 当前体重跟最新一条记录保持一致，补录旧日期不会把当前体重带回过去。
+    _syncProfileToLatestWeight(now);
     _markMutation();
     await _persist();
   }
@@ -121,10 +164,21 @@ class AppState extends ChangeNotifier {
   Future<void> deleteWeight(String id) async {
     final index = weights.indexWhere((weight) => weight.id == id);
     if (index == -1) return;
+    final now = DateTime.now();
     weights.removeAt(index);
-    deletedWeights[id] = DateTime.now();
+    deletedWeights[id] = now;
+    _syncProfileToLatestWeight(now);
     _markMutation();
     await _persist();
+  }
+
+  bool _syncProfileToLatestWeight(DateTime now) {
+    final latest = latestWeight;
+    if (latest == null) return false;
+    if ((profile.weightKg - latest.kg).abs() < 0.0001) return false;
+    profile = profile.copyWith(weightKg: latest.kg);
+    profileUpdatedAt = now;
+    return true;
   }
 
   Future<void> updateProfile(UserProfile value) async {
@@ -202,7 +256,7 @@ class AppState extends ChangeNotifier {
 
   /// 按最近 7 天平均缺口和 7700 kcal/kg 粗略估算，仅供参考。
   int? predictDaysToTarget() {
-    final remainingKg = profile.weightKg - profile.targetWeightKg;
+    final remainingKg = currentWeightKg - profile.targetWeightKg;
     final averageDeficit = recentAverageDeficit();
     if (remainingKg <= 0 || averageDeficit <= 0) return null;
 
@@ -248,6 +302,10 @@ class AppState extends ChangeNotifier {
       }
     }
     return result;
+  }
+
+  static DateTime _dayAtNoon(DateTime date) {
+    return DateTime(date.year, date.month, date.day, 12);
   }
 
   static bool _isSameDay(DateTime first, DateTime second) {

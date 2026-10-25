@@ -1,5 +1,3 @@
-import 'dart:ui' show ImageFilter;
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -936,53 +934,48 @@ class _SaveDock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-          decoration: const BoxDecoration(
-            color: Color(0xF20A0A0B),
-            border: Border(top: BorderSide(color: AppColors.line)),
-          ),
-          child: SafeArea(
-            top: false,
-            minimum: const EdgeInsets.only(bottom: 12),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Row(
-                    children: [
-                      Text(
-                        count == 0 ? '还没有添加食物' : '$count 项食物',
-                        style: const TextStyle(
-                          fontSize: 12.5,
-                          color: AppColors.secondary,
-                        ),
-                      ),
-                      const Spacer(),
-                      Text(
-                        '共 ${formatCalories(total)} 大卡',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.ink,
-                          fontFeatures: [FontFeature.tabularFigures()],
-                        ),
-                      ),
-                    ],
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+      decoration: const BoxDecoration(
+        color: Color(0xF20A0A0B),
+        border: Border(top: BorderSide(color: AppColors.line)),
+      ),
+      child: SafeArea(
+        top: false,
+        minimum: const EdgeInsets.only(bottom: 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                children: [
+                  Text(
+                    count == 0 ? '还没有添加食物' : '$count 项食物',
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      color: AppColors.secondary,
+                    ),
                   ),
-                ),
-                PrimaryButton(
-                  label: label,
-                  busy: saving,
-                  onPressed: canSave ? onSave : null,
-                ),
-              ],
+                  const Spacer(),
+                  Text(
+                    '共 ${formatCalories(total)} 大卡',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.ink,
+                      fontFeatures: [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
+            PrimaryButton(
+              label: label,
+              busy: saving,
+              onPressed: canSave ? onSave : null,
+            ),
+          ],
         ),
       ),
     );

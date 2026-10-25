@@ -9,6 +9,11 @@ const MAX_AI_BYTES = 12_000_000;
 const AI_ENDPOINT = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
 const AI_MODEL = 'glm-4v-flash';
 const DUMMY_SALT = 'bWVpY2FuLWR1bW15LXNhbHQ=';
+const AI_WINDOW_MS = 60 * 60 * 1000;
+const AI_ANON_LIMIT = 20;
+const AI_USER_LIMIT = 120;
+
+let aiUsageReady = false;
 
 class HttpError extends Error {
   constructor(status, message) {
@@ -368,7 +373,11 @@ async function syncConflict(env, user, headers) {
 
 async function handleAnalyze(request, env, headers) {
   const user = await authenticate(request, env);
-  if (!user) throw new HttpError(401, '登录已过期，请重新登录。');
+  const subject = user
+    ? `u:${user.userId}`
+    : `ip:${request.headers.get('CF-Connecting-IP') || 'local'}`;
+  const limit = user ? AI_USER_LIMIT : AI_ANON_LIMIT;
+  await enforceAiQuota(env, subject, limit);
 
   const body = await readJson(request, MAX_AI_BYTES);
   if (!isValidMessages(body.messages)) {
@@ -431,6 +440,47 @@ async function handleAnalyze(request, env, headers) {
     throw new HttpError(429, '图片识别服务当前请求较多，请稍后重试。');
   }
   throw new HttpError(503, '图片识别服务暂时不可用，请稍后重试。');
+}
+
+async function enforceAiQuota(env, subject, limit) {
+  try {
+    if (!aiUsageReady) {
+      await env.DB.prepare(
+        'CREATE TABLE IF NOT EXISTS ai_usage (subject TEXT PRIMARY KEY, window_start INTEGER NOT NULL, requests INTEGER NOT NULL)',
+      ).run();
+      aiUsageReady = true;
+    }
+    const windowStart = Math.floor(Date.now() / AI_WINDOW_MS) * AI_WINDOW_MS;
+    const row = await env.DB.prepare(
+      `INSERT INTO ai_usage (subject, window_start, requests)
+       VALUES (?, ?, 1)
+       ON CONFLICT(subject) DO UPDATE SET
+         requests = CASE WHEN ai_usage.window_start = excluded.window_start
+           THEN ai_usage.requests + 1 ELSE 1 END,
+         window_start = excluded.window_start
+       RETURNING requests`,
+    )
+      .bind(subject, windowStart)
+      .first();
+    const used = Number(row && row.requests);
+    if (used > limit) {
+      const minutes = Math.max(
+        1,
+        Math.ceil((windowStart + AI_WINDOW_MS - Date.now()) / 60000),
+      );
+      throw new HttpError(
+        429,
+        `图片识别每小时最多 ${limit} 次，请在约 ${minutes} 分钟后再试。`,
+      );
+    }
+  } catch (error) {
+    if (error instanceof HttpError) throw error;
+    console.error('AI quota unavailable:', error);
+    throw new HttpError(
+      503,
+      '图片识别服务尚未初始化，请先导入 server/schema.sql 后重试。',
+    );
+  }
 }
 
 function isValidMessages(messages) {

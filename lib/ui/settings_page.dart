@@ -6,7 +6,6 @@ import '../app_state.dart';
 import '../cloud_sync.dart';
 import '../export_service.dart';
 import '../models.dart';
-import 'ai_page.dart';
 import 'components.dart';
 import 'theme.dart';
 
@@ -61,23 +60,69 @@ class _SettingsPageState extends State<SettingsPage> {
           onTap: () => showProfileSheet(context, state),
         ),
         const SizedBox(height: 44),
-        const SectionHeader(title: '智能记录'),
-        GroupedCard(
-          children: [
-            GroupedRow(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 19),
-              leading: const IconBadge(
-                icon: CupertinoIcons.camera_viewfinder,
+        const SectionHeader(title: '显示与输入'),
+        SurfaceCard(
+          padding: const EdgeInsets.fromLTRB(20, 18, 18, 18),
+          child: Row(
+            children: [
+              const IconBadge(
+                icon: CupertinoIcons.gauge,
                 color: AppColors.accentDeep,
                 background: AppColors.accentSoft,
                 size: 40,
                 iconSize: 18,
               ),
-              title: '拍照识别',
-              subtitle: '拍一张照片，生成可编辑的食物清单',
-              onTap: () => _openCapture(context, state),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '体重单位',
+                      style: TextStyle(
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                    SizedBox(height: 3),
+                    Text(
+                      '切换后全局显示与输入都会换算',
+                      style: TextStyle(
+                        fontSize: 12,
+                        height: 1.4,
+                        color: AppColors.secondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              SizedBox(
+                width: 132,
+                child: PillSegmented<WeightUnit>(
+                  options: const [
+                    SegmentedOption(value: WeightUnit.kilograms, label: 'kg'),
+                    SegmentedOption(value: WeightUnit.grams, label: 'g'),
+                  ],
+                  value: state.profile.weightUnit,
+                  onChanged: _setWeightUnit,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 4),
+          child: Text(
+            '记录仍以统一数据保存并参与云同步；切换只改变你看到的数字。',
+            style: TextStyle(
+              fontSize: 11.5,
+              height: 1.55,
+              color: AppColors.tertiary,
             ),
-          ],
+          ),
         ),
         const SizedBox(height: 44),
         const SectionHeader(title: '同步'),
@@ -152,12 +197,17 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  void _openCapture(BuildContext context, AppState state) {
-    Navigator.of(context).push(
-      CupertinoPageRoute<void>(
-        builder: (_) => AiCapturePage(state: state, cloud: widget.cloud),
-      ),
+  Future<void> _setWeightUnit(WeightUnit unit) async {
+    if (widget.state.profile.weightUnit == unit) return;
+    await widget.state.updateProfile(
+      widget.state.profile.copyWith(weightUnit: unit),
     );
+    if (mounted) {
+      showAppMessage(
+        context,
+        unit == WeightUnit.kilograms ? '体重已切换为 kg' : '体重已切换为 g',
+      );
+    }
   }
 }
 
@@ -170,6 +220,7 @@ class _ProfileCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final profile = state.profile;
+    final unit = profile.weightUnit;
     final bmr = NutritionMath.bmr(profile);
     final tdee = NutritionMath.tdee(profile);
 
@@ -226,14 +277,14 @@ class _ProfileCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                formatNumber(profile.weightKg),
+                unit.formatValue(profile.weightKg),
                 style: AppTextStyles.numericLarge,
               ),
-              const Padding(
-                padding: EdgeInsets.only(left: 6, bottom: 4),
+              Padding(
+                padding: const EdgeInsets.only(left: 6, bottom: 4),
                 child: Text(
-                  'kg',
-                  style: TextStyle(
+                  unit.symbol,
+                  style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w500,
                     color: AppColors.secondary,
@@ -244,7 +295,7 @@ class _ProfileCard extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(bottom: 4),
                 child: Tag(
-                  label: '目标 ${formatNumber(profile.targetWeightKg)} kg',
+                  label: '目标 ${unit.format(profile.targetWeightKg)}',
                   color: AppColors.accentDeep,
                   background: AppColors.accentSoft,
                   icon: CupertinoIcons.flag,
@@ -349,17 +400,18 @@ class ProfileSheet extends StatefulWidget {
 }
 
 class _ProfileSheetState extends State<ProfileSheet> {
+  late final WeightUnit unit = widget.state.profile.weightUnit;
   late final height = TextEditingController(
     text: formatNumber(widget.state.profile.heightCm),
   );
   late final weight = TextEditingController(
-    text: formatNumber(widget.state.profile.weightKg),
+    text: unit.formatValue(widget.state.profile.weightKg),
   );
   late final age = TextEditingController(
     text: widget.state.profile.age.toString(),
   );
   late final target = TextEditingController(
-    text: formatNumber(widget.state.profile.targetWeightKg),
+    text: unit.formatValue(widget.state.profile.targetWeightKg),
   );
   late String sex = widget.state.profile.sex;
   late double activity = widget.state.profile.activity;
@@ -387,19 +439,23 @@ class _ProfileSheetState extends State<ProfileSheet> {
 
   UserProfile? get _draft {
     final heightValue = double.tryParse(height.text.trim());
-    final weightValue = double.tryParse(weight.text.trim());
+    final weightInput = double.tryParse(weight.text.trim().replaceAll(',', ''));
     final ageValue = int.tryParse(age.text.trim());
-    final targetValue = double.tryParse(target.text.trim());
+    final targetInput = double.tryParse(target.text.trim().replaceAll(',', ''));
     if (heightValue == null ||
         heightValue < 100 ||
         heightValue > 250 ||
-        weightValue == null ||
-        weightValue < 25 ||
-        weightValue > 400 ||
+        weightInput == null ||
         ageValue == null ||
         ageValue < 10 ||
         ageValue > 100 ||
-        targetValue == null ||
+        targetInput == null) {
+      return null;
+    }
+    final weightValue = unit.toKilograms(weightInput);
+    final targetValue = unit.toKilograms(targetInput);
+    if (weightValue < 25 ||
+        weightValue > 400 ||
         targetValue < 25 ||
         targetValue > 400) {
       return null;
@@ -457,12 +513,12 @@ class _ProfileSheetState extends State<ProfileSheet> {
               Expanded(
                 child: TextField(
                   controller: weight,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
+                  keyboardType: TextInputType.numberWithOptions(
+                    decimal: unit == WeightUnit.kilograms,
                   ),
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: '体重',
-                    suffixText: 'kg',
+                    suffixText: unit.symbol,
                   ),
                 ),
               ),
@@ -485,12 +541,12 @@ class _ProfileSheetState extends State<ProfileSheet> {
               Expanded(
                 child: TextField(
                   controller: target,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
+                  keyboardType: TextInputType.numberWithOptions(
+                    decimal: unit == WeightUnit.kilograms,
                   ),
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: '目标体重',
-                    suffixText: 'kg',
+                    suffixText: unit.symbol,
                   ),
                 ),
               ),

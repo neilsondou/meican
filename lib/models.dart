@@ -161,6 +161,40 @@ DateTime? _dateOrNull(Object? value) {
   return null;
 }
 
+enum WeightUnit {
+  kilograms('kg', '公斤'),
+  grams('g', '克');
+
+  const WeightUnit(this.symbol, this.label);
+
+  final String symbol;
+  final String label;
+
+  static WeightUnit fromStorage(Object? value) {
+    return value == grams.symbol ? grams : kilograms;
+  }
+
+  double toDisplay(double kg) => this == grams ? kg * 1000 : kg;
+
+  double toKilograms(double value) => this == grams ? value / 1000 : value;
+
+  double displayInput(double kg) {
+    if (this == grams) return (kg * 1000).roundToDouble();
+    return (kg * 10).roundToDouble() / 10;
+  }
+
+  String formatValue(double kg) {
+    final value = toDisplay(kg);
+    if (this == grams) return value.round().toString();
+    final rounded = (value * 10).roundToDouble() / 10;
+    return rounded == rounded.roundToDouble()
+        ? rounded.toInt().toString()
+        : rounded.toStringAsFixed(1);
+  }
+
+  String format(double kg) => '${formatValue(kg)} $symbol';
+}
+
 class UserProfile {
   const UserProfile({
     this.heightCm = 170,
@@ -169,6 +203,7 @@ class UserProfile {
     this.sex = 'male',
     this.activity = 1.375,
     this.targetWeightKg = 60,
+    this.weightUnit = WeightUnit.kilograms,
   });
 
   final double heightCm;
@@ -177,6 +212,7 @@ class UserProfile {
   final String sex;
   final double activity;
   final double targetWeightKg;
+  final WeightUnit weightUnit;
 
   UserProfile copyWith({
     double? heightCm,
@@ -185,6 +221,7 @@ class UserProfile {
     String? sex,
     double? activity,
     double? targetWeightKg,
+    WeightUnit? weightUnit,
   }) {
     return UserProfile(
       heightCm: heightCm ?? this.heightCm,
@@ -193,6 +230,7 @@ class UserProfile {
       sex: sex ?? this.sex,
       activity: activity ?? this.activity,
       targetWeightKg: targetWeightKg ?? this.targetWeightKg,
+      weightUnit: weightUnit ?? this.weightUnit,
     );
   }
 
@@ -204,6 +242,7 @@ class UserProfile {
       'sex': sex,
       'activity': activity,
       'targetWeightKg': targetWeightKg,
+      'weightUnit': weightUnit.symbol,
     };
   }
 
@@ -215,6 +254,7 @@ class UserProfile {
       sex: json['sex'] as String,
       activity: (json['activity'] as num).toDouble(),
       targetWeightKg: (json['targetWeightKg'] as num).toDouble(),
+      weightUnit: WeightUnit.fromStorage(json['weightUnit']),
     );
   }
 }
@@ -234,6 +274,27 @@ abstract final class NutritionMath {
   /// 正数表示热量缺口，负数表示热量盈余。
   static double deficit(double intake, UserProfile profile) {
     return tdee(profile) - intake;
+  }
+
+  /// Deurenberg 公式的粗略体脂率估算，仅用于观察趋势。
+  static double bodyFatPercent(UserProfile profile, {double? weightKg}) {
+    final weight = weightKg ?? profile.weightKg;
+    final heightM = profile.heightCm / 100;
+    if (heightM <= 0 || weight <= 0) return 0;
+    final bmi = weight / (heightM * heightM);
+    final sexFactor = profile.sex == 'female' ? 0 : 1;
+    final estimate = 1.20 * bmi + 0.23 * profile.age - 10.8 * sexFactor - 5.4;
+    return estimate.clamp(3.0, 65.0).toDouble();
+  }
+
+  static String bodyFatLabel(double percent, String sex) {
+    final threshold = sex == 'female'
+        ? (low: 14.0, standard: 25.0, high: 32.0)
+        : (low: 6.0, standard: 18.0, high: 25.0);
+    if (percent < threshold.low) return '偏低';
+    if (percent < threshold.standard) return '标准';
+    if (percent < threshold.high) return '偏高';
+    return '较高';
   }
 
   /// 减重估算采用的脂肪能量换算值（kcal/kg），仅供粗略估算。

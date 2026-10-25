@@ -8,6 +8,7 @@ import 'charts.dart';
 import 'components.dart';
 import 'settings_page.dart';
 import 'theme.dart';
+import 'weight_import.dart';
 
 class ProgressPage extends StatelessWidget {
   const ProgressPage({super.key, required this.state});
@@ -16,10 +17,10 @@ class ProgressPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final weights = List<WeightEntry>.of(state.weights)
-      ..sort((first, second) => first.date.compareTo(second.date));
-    final current = weights.isEmpty ? state.profile.weightKg : weights.last.kg;
+    final weights = state.sortedWeights;
+    final current = state.currentWeightKg;
     final target = state.profile.targetWeightKg;
+    final unit = state.profile.weightUnit;
     final recent = weights.length > 12
         ? weights.sublist(weights.length - 12)
         : weights;
@@ -75,7 +76,9 @@ class ProgressPage extends StatelessWidget {
                 recent: recent,
                 current: current,
                 target: target,
+                unit: unit,
                 onAdd: () => showWeightSheet(context, state),
+                onImport: () => showWeightImport(context, state),
               ),
               const SizedBox(height: 16),
               _PredictionCard(
@@ -84,7 +87,10 @@ class ProgressPage extends StatelessWidget {
                 days: days,
                 targetDate: targetDate,
                 deficit: deficit,
+                unit: unit,
               ),
+              const SizedBox(height: 16),
+              _BodyFatCard(state: state, entries: weights, current: current),
               const SizedBox(height: 42),
               const SectionHeader(title: '最近七天'),
               _IntakeCard(
@@ -126,7 +132,7 @@ class ProgressPage extends StatelessWidget {
                 const Padding(
                   padding: EdgeInsets.fromLTRB(4, 14, 4, 0),
                   child: Text(
-                    '左滑一条记录可以删除。',
+                    '轻点一条记录可以修改日期和数值，左滑删除。',
                     style: TextStyle(
                       fontSize: 12,
                       height: 1.5,
@@ -149,14 +155,18 @@ class _WeightCard extends StatelessWidget {
     required this.recent,
     required this.current,
     required this.target,
+    required this.unit,
     required this.onAdd,
+    required this.onImport,
   });
 
   final List<WeightEntry> entries;
   final List<WeightEntry> recent;
   final double current;
   final double target;
+  final WeightUnit unit;
   final VoidCallback onAdd;
+  final VoidCallback onImport;
 
   @override
   Widget build(BuildContext context) {
@@ -184,7 +194,7 @@ class _WeightCard extends StatelessWidget {
               ),
               const Spacer(),
               Tag(
-                label: '目标 ${formatNumber(target)} kg',
+                label: '目标 ${unit.format(target)}',
                 color: AppColors.accentDeep,
                 background: AppColors.accentSoft,
                 icon: CupertinoIcons.flag,
@@ -195,12 +205,15 @@ class _WeightCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(formatNumber(current), style: AppTextStyles.numericLarge),
-              const Padding(
-                padding: EdgeInsets.only(left: 7, bottom: 4),
+              Text(
+                unit.formatValue(current),
+                style: AppTextStyles.numericLarge,
+              ),
+              Padding(
+                padding: const EdgeInsets.only(left: 7, bottom: 4),
                 child: Text(
-                  'kg',
-                  style: TextStyle(
+                  unit.symbol,
+                  style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w500,
                     color: AppColors.secondary,
@@ -211,15 +224,13 @@ class _WeightCard extends StatelessWidget {
               if (delta != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 4),
-                  child: _DeltaLabel(delta: delta),
+                  child: _DeltaLabel(delta: delta, unit: unit),
                 )
               else
                 Padding(
                   padding: const EdgeInsets.only(bottom: 5),
                   child: Text(
-                    targetGap > 0
-                        ? '距目标 ${formatNumber(targetGap)} kg'
-                        : '已在目标之内',
+                    targetGap > 0 ? '距目标 ${unit.format(targetGap)}' : '已在目标之内',
                     style: const TextStyle(
                       fontSize: 12.5,
                       color: AppColors.secondary,
@@ -242,31 +253,12 @@ class _WeightCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 10),
-                Pressable(
-                  onTap: onAdd,
-                  haptic: true,
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 5),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          '记录今天的体重',
-                          style: TextStyle(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.accentDeep,
-                          ),
-                        ),
-                        SizedBox(width: 3),
-                        Icon(
-                          CupertinoIcons.chevron_right,
-                          size: 11,
-                          color: AppColors.accentDeep,
-                        ),
-                      ],
-                    ),
-                  ),
+                _WeightTextAction(label: '记录今天的体重', onTap: onAdd),
+                const SizedBox(height: 2),
+                _WeightTextAction(
+                  label: '从截图导入体重',
+                  icon: CupertinoIcons.photo,
+                  onTap: onImport,
                 ),
               ],
             )
@@ -313,6 +305,12 @@ class _WeightCard extends StatelessWidget {
                 ),
               ],
             ),
+            const SizedBox(height: 12),
+            _WeightTextAction(
+              label: '从截图导入体重',
+              icon: CupertinoIcons.photo,
+              onTap: onImport,
+            ),
           ],
         ],
       ),
@@ -320,15 +318,64 @@ class _WeightCard extends StatelessWidget {
   }
 }
 
+class _WeightTextAction extends StatelessWidget {
+  const _WeightTextAction({
+    required this.label,
+    required this.onTap,
+    this.icon,
+  });
+
+  final String label;
+  final VoidCallback onTap;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Pressable(
+      onTap: onTap,
+      haptic: true,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 5),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 12, color: AppColors.accentDeep),
+              const SizedBox(width: 5),
+            ],
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w600,
+                color: AppColors.accentDeep,
+              ),
+            ),
+            const SizedBox(width: 3),
+            const Icon(
+              CupertinoIcons.chevron_right,
+              size: 11,
+              color: AppColors.accentDeep,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _DeltaLabel extends StatelessWidget {
-  const _DeltaLabel({required this.delta});
+  const _DeltaLabel({required this.delta, required this.unit});
 
   final double delta;
+  final WeightUnit unit;
 
   @override
   Widget build(BuildContext context) {
     final down = delta < 0;
-    final flat = delta.abs() < 0.05;
+    final flat = unit == WeightUnit.grams
+        ? unit.toDisplay(delta).abs() < 0.5
+        : delta.abs() < 0.05;
     final color = flat
         ? AppColors.tertiary
         : down
@@ -336,7 +383,7 @@ class _DeltaLabel extends StatelessWidget {
         : AppColors.warm;
     final text = flat
         ? '与上次持平'
-        : '${down ? '↓' : '↑'} ${formatNumber(delta.abs())} kg';
+        : '${down ? '↓' : '↑'} ${unit.format(delta.abs())}';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
@@ -364,6 +411,7 @@ class _PredictionCard extends StatelessWidget {
     required this.days,
     required this.targetDate,
     required this.deficit,
+    required this.unit,
   });
 
   final double current;
@@ -371,6 +419,7 @@ class _PredictionCard extends StatelessWidget {
   final int? days;
   final DateTime? targetDate;
   final double deficit;
+  final WeightUnit unit;
 
   @override
   Widget build(BuildContext context) {
@@ -407,7 +456,7 @@ class _PredictionCard extends StatelessWidget {
               const SizedBox(height: 14),
               Text(
                 reached
-                    ? '当前 ${formatNumber(current)} kg，已经在目标 ${formatNumber(target)} kg 之内。保持现在的节奏就好。'
+                    ? '当前 ${unit.format(current)}，已经在目标 ${unit.format(target)} 之内。保持现在的节奏就好。'
                     : hasPrediction
                     ? '预计 ${DateFormat('yyyy年M月d日').format(targetDate!)} 前后达成。按过去 7 天有记录日子的日均缺口 ${formatCalories(deficit)} 大卡推算。'
                     : '连续记录几天饮食后，会按近期有记录日子的热量缺口，推算到达目标的日子。',
@@ -420,7 +469,9 @@ class _PredictionCard extends StatelessWidget {
               if (!reached) ...[
                 const SizedBox(height: 18),
                 Text(
-                  '还需减掉约 ${formatNumber(remaining)} kg · ${formatNumber(remaining * 2)} 斤',
+                  unit == WeightUnit.kilograms
+                      ? '还需减掉约 ${unit.format(remaining)} · ${formatNumber(remaining * 2)} 斤'
+                      : '还需减掉约 ${unit.format(remaining)}',
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -465,6 +516,171 @@ class _PredictionGlow extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         border: Border.all(color: const Color(0x14FFFFFF), width: 26),
+      ),
+    );
+  }
+}
+
+class _BodyFatCard extends StatelessWidget {
+  const _BodyFatCard({
+    required this.state,
+    required this.entries,
+    required this.current,
+  });
+
+  final AppState state;
+  final List<WeightEntry> entries;
+  final double current;
+
+  @override
+  Widget build(BuildContext context) {
+    final profile = state.profile;
+    final unit = profile.weightUnit;
+    final percent = NutritionMath.bodyFatPercent(profile, weightKg: current);
+    final category = NutritionMath.bodyFatLabel(percent, profile.sex);
+    final fatMass = current * percent / 100;
+    final leanMass = current - fatMass;
+    final history = [
+      for (final entry in entries)
+        NutritionMath.bodyFatPercent(profile, weightKg: entry.kg),
+    ];
+    final recent = history.length > 12
+        ? history.sublist(history.length - 12)
+        : history;
+    final previous = entries.length >= 2
+        ? NutritionMath.bodyFatPercent(
+            profile,
+            weightKg: entries[entries.length - 2].kg,
+          )
+        : null;
+    final delta = previous == null ? null : percent - previous;
+    final categoryColor = category == '标准'
+        ? AppColors.accentDeep
+        : category == '偏高'
+        ? AppColors.warm
+        : category == '较高'
+        ? AppColors.warning
+        : AppColors.secondary;
+
+    return SurfaceCard(
+      padding: const EdgeInsets.fromLTRB(26, 24, 26, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text(
+                '体脂估算',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.secondary,
+                ),
+              ),
+              const Spacer(),
+              Tag(
+                label: category,
+                color: categoryColor,
+                background: categoryColor.withValues(alpha: 0.12),
+                icon: CupertinoIcons.drop,
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                percent.toStringAsFixed(1),
+                style: AppTextStyles.numericLarge,
+              ),
+              const Padding(
+                padding: EdgeInsets.only(left: 2, bottom: 4),
+                child: Text(
+                  '%',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.secondary,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              if (delta != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 5),
+                  child: Text(
+                    delta.abs() < 0.05
+                        ? '与上次持平'
+                        : '较上次 ${delta < 0 ? '↓' : '↑'} ${delta.abs().toStringAsFixed(1)}%',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: delta.abs() < 0.05
+                          ? AppColors.tertiary
+                          : delta < 0
+                          ? AppColors.accentDeep
+                          : AppColors.warm,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '脂肪量约 ${unit.format(fatMass)} · 瘦体重约 ${unit.format(leanMass)}',
+            style: const TextStyle(
+              fontSize: 12.5,
+              color: AppColors.secondary,
+              fontFeatures: [FontFeature.tabularFigures()],
+            ),
+          ),
+          if (recent.length >= 2) ...[
+            const SizedBox(height: 18),
+            BodyFatTrendChart(values: recent),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Text(
+                  DateFormat(
+                    'M月d日',
+                  ).format(entries[entries.length - recent.length].date),
+                  style: const TextStyle(
+                    fontSize: 10.5,
+                    color: AppColors.tertiary,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  DateFormat('M月d日').format(entries.last.date),
+                  style: const TextStyle(
+                    fontSize: 10.5,
+                    color: AppColors.tertiary,
+                  ),
+                ),
+              ],
+            ),
+          ] else ...[
+            const SizedBox(height: 16),
+            const Text(
+              '记录两次以上体重后，这里会显示体脂率的变化趋势。',
+              style: TextStyle(
+                fontSize: 12.5,
+                height: 1.6,
+                color: AppColors.tertiary,
+              ),
+            ),
+          ],
+          const SizedBox(height: 14),
+          const Text(
+            '按身高、年龄、性别和当前体重自动估算，只适合观察长期方向，不能替代体脂秤或医学检测。',
+            style: TextStyle(
+              fontSize: 11,
+              height: 1.6,
+              color: AppColors.tertiary,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -677,6 +893,7 @@ class _WeightLog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final descending = entries.reversed.toList();
+    final unit = state.profile.weightUnit;
     return GroupedCard(
       children: [
         for (var index = 0; index < descending.length; index++)
@@ -687,7 +904,7 @@ class _WeightLog extends StatelessWidget {
               context,
               title: '删除这条体重记录？',
               message:
-                  '${DateFormat('M月d日').format(descending[index].date)} · ${formatNumber(descending[index].kg)} kg',
+                  '${DateFormat('M月d日').format(descending[index].date)} · ${unit.format(descending[index].kg)}',
               confirmLabel: '删除',
               destructive: true,
             ),
@@ -706,6 +923,8 @@ class _WeightLog extends StatelessWidget {
               ),
             ),
             child: GroupedRow(
+              onTap: () =>
+                  showWeightSheet(context, state, entry: descending[index]),
               leading: IconBadge(
                 icon: index == 0
                     ? CupertinoIcons.sparkles
@@ -719,9 +938,8 @@ class _WeightLog extends StatelessWidget {
                 'M月d日 EEEE',
                 'zh_CN',
               ).format(descending[index].date),
-              subtitle: index == 0 ? '最近一次记录' : '更早一次记录',
-              detail: '${formatNumber(descending[index].kg)} kg',
-              showChevron: false,
+              subtitle: index == 0 ? '最近一次 · 轻点修改' : '轻点修改',
+              detail: unit.format(descending[index].kg),
             ),
           ),
       ],
@@ -729,24 +947,42 @@ class _WeightLog extends StatelessWidget {
   }
 }
 
-Future<void> showWeightSheet(BuildContext context, AppState state) {
-  return showAppSheet<void>(context, _WeightSheet(state: state));
+Future<void> showWeightSheet(
+  BuildContext context,
+  AppState state, {
+  WeightEntry? entry,
+}) {
+  return showAppSheet<void>(context, _WeightSheet(state: state, entry: entry));
 }
 
 class _WeightSheet extends StatefulWidget {
-  const _WeightSheet({required this.state});
+  const _WeightSheet({required this.state, this.entry});
 
   final AppState state;
+  final WeightEntry? entry;
 
   @override
   State<_WeightSheet> createState() => _WeightSheetState();
 }
 
 class _WeightSheetState extends State<_WeightSheet> {
+  late final WeightUnit unit = widget.state.profile.weightUnit;
+  late final DateTime initialDay = widget.entry?.date ?? DateTime.now();
+  late DateTime selectedDate = DateTime(
+    initialDay.year,
+    initialDay.month,
+    initialDay.day,
+  );
   late final TextEditingController controller = TextEditingController(
-    text: formatNumber(widget.state.profile.weightKg),
+    text: unit.formatValue(
+      widget.entry?.kg ??
+          widget.state.weightOnDay(initialDay)?.kg ??
+          widget.state.profile.weightKg,
+    ),
   );
   bool saving = false;
+
+  bool get editing => widget.entry != null;
 
   @override
   void dispose() {
@@ -754,56 +990,138 @@ class _WeightSheetState extends State<_WeightSheet> {
     super.dispose();
   }
 
+  Future<void> pickDate() async {
+    final picked = await showAppDatePicker(
+      context,
+      initialDate: selectedDate,
+      maximumDate: DateTime.now(),
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      selectedDate = DateTime(picked.year, picked.month, picked.day);
+    });
+  }
+
   Future<void> save() async {
     if (saving) return;
-    final kg = double.tryParse(controller.text.trim());
-    if (kg == null || kg < 25 || kg > 400) {
-      showAppMessage(context, '请输入 25–400 kg 之间的有效体重');
+    final raw = double.tryParse(controller.text.trim().replaceAll(',', ''));
+    final kg = raw == null ? null : unit.toKilograms(raw);
+    if (kg == null || !kg.isFinite || kg < 25 || kg > 400) {
+      showAppMessage(
+        context,
+        unit == WeightUnit.grams
+            ? '请输入 25000–400000 g 之间的有效体重'
+            : '请输入 25–400 kg 之间的有效体重',
+      );
       return;
     }
+
+    final conflict = widget.state.weightOnDay(selectedDate);
+    if (conflict != null && conflict.id != widget.entry?.id) {
+      final confirmed = await showConfirmDialog(
+        context,
+        title: '覆盖同日体重？',
+        message:
+            '${DateFormat('M月d日').format(selectedDate)} 已有 ${unit.format(conflict.kg)}，保存后只保留这次填写的数值。',
+        confirmLabel: '覆盖',
+      );
+      if (!confirmed || !mounted) return;
+    }
+
     setState(() => saving = true);
-    await widget.state.addWeight(
+    await widget.state.upsertWeight(
       WeightEntry(
-        id: DateTime.now().microsecondsSinceEpoch.toString(),
-        date: DateTime.now(),
+        id:
+            widget.entry?.id ??
+            DateTime.now().microsecondsSinceEpoch.toString(),
+        date: selectedDate,
         kg: kg,
       ),
     );
     if (!mounted) return;
     Navigator.pop(context);
-    showAppMessage(context, '已记录今日体重');
+    final today = DateTime.now();
+    final isToday =
+        selectedDate.year == today.year &&
+        selectedDate.month == today.month &&
+        selectedDate.day == today.day;
+    showAppMessage(
+      context,
+      editing
+          ? '已更新 ${DateFormat('M月d日').format(selectedDate)} 体重'
+          : isToday
+          ? '已记录今日体重'
+          : '已补录 ${DateFormat('M月d日').format(selectedDate)} 体重',
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final isToday =
+        selectedDate.year == now.year &&
+        selectedDate.month == now.month &&
+        selectedDate.day == now.day;
     return SingleChildScrollView(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SheetHeading(title: '记录体重', subtitle: '同一个自然日只保留最后一次，趋势按天计算。'),
+          SheetHeading(
+            title: editing ? '修改体重' : '记录体重',
+            subtitle: '同一个自然日只保留最后一次；补录旧日期不会改变更新的当前体重。',
+            onClose: () => Navigator.pop(context),
+          ),
+          GroupedCard(
+            children: [
+              GroupedRow(
+                title: '日期',
+                subtitle: DateFormat(
+                  'yyyy年M月d日 EEEE',
+                  'zh_CN',
+                ).format(selectedDate),
+                leading: const IconBadge(
+                  icon: CupertinoIcons.calendar,
+                  color: AppColors.accentDeep,
+                  background: AppColors.accentSoft,
+                  size: 38,
+                  iconSize: 17,
+                ),
+                onTap: pickDate,
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
           TextField(
             controller: controller,
-            autofocus: true,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            autofocus: !editing,
+            keyboardType: TextInputType.numberWithOptions(
+              decimal: unit == WeightUnit.kilograms,
+            ),
             style: AppTextStyles.numericLarge,
-            decoration: const InputDecoration(
-              labelText: '今天的体重',
-              suffixText: 'kg',
+            decoration: InputDecoration(
+              labelText: isToday ? '今天的体重' : '这一天的体重',
+              suffixText: unit.symbol,
             ),
             onSubmitted: (_) => save(),
           ),
           const SizedBox(height: 12),
-          const Text(
-            '固定时间、相近状态测量，趋势会更有意义。',
-            style: TextStyle(
+          Text(
+            unit == WeightUnit.kilograms
+                ? '固定时间、相近状态测量，趋势会更有意义。'
+                : '当前按克显示，输入时直接填写克数，例如 65200 表示 65.2 kg。',
+            style: const TextStyle(
               fontSize: 12,
               height: 1.6,
               color: AppColors.tertiary,
             ),
           ),
           const SizedBox(height: 22),
-          PrimaryButton(label: '保存', busy: saving, onPressed: save),
+          PrimaryButton(
+            label: editing ? '保存修改' : '保存',
+            busy: saving,
+            onPressed: save,
+          ),
         ],
       ),
     );

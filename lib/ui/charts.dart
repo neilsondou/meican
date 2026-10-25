@@ -201,6 +201,135 @@ class _WeightPainter extends CustomPainter {
       oldDelegate.entries != entries;
 }
 
+class BodyFatTrendChart extends StatelessWidget {
+  const BodyFatTrendChart({super.key, required this.values, this.height = 94});
+
+  final List<double> values;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    return SizedBox(
+      height: height,
+      width: double.infinity,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: reduceMotion
+            ? Duration.zero
+            : const Duration(milliseconds: 800),
+        curve: Curves.easeOutCubic,
+        builder: (context, progress, _) {
+          return CustomPaint(
+            painter: _BodyFatPainter(values: values, progress: progress),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _BodyFatPainter extends CustomPainter {
+  const _BodyFatPainter({required this.values, required this.progress});
+
+  final List<double> values;
+  final double progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (values.isEmpty || size.width <= 0) return;
+    const inset = 8.0;
+    final chartHeight = size.height - inset * 2;
+    final low = values.reduce(math.min);
+    final high = values.reduce(math.max);
+    final span = math.max(1.5, high - low);
+    final minValue = low - span * 0.28;
+    final maxValue = high + span * 0.28;
+
+    Offset point(int index) {
+      final x = values.length == 1
+          ? size.width / 2
+          : size.width * index / (values.length - 1);
+      final y =
+          inset +
+          chartHeight -
+          chartHeight * (values[index] - minValue) / (maxValue - minValue);
+      return Offset(x, y);
+    }
+
+    if (values.length == 1) {
+      final center = point(0);
+      canvas.drawCircle(
+        center,
+        4,
+        Paint()..color = AppColors.warm.withValues(alpha: progress),
+      );
+      return;
+    }
+
+    final line = Path()..moveTo(point(0).dx, point(0).dy);
+    for (var index = 1; index < values.length; index++) {
+      final previous = point(index - 1);
+      final current = point(index);
+      final middle = (previous.dx + current.dx) / 2;
+      line.cubicTo(
+        middle,
+        previous.dy,
+        middle,
+        current.dy,
+        current.dx,
+        current.dy,
+      );
+    }
+
+    final area = Path.from(line)
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+    canvas.drawPath(
+      area,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            AppColors.warm.withValues(alpha: 0.16),
+            AppColors.warm.withValues(alpha: 0.01),
+          ],
+        ).createShader(Offset.zero & size),
+    );
+
+    final metric = line.computeMetrics().first;
+    final partial = metric.extractPath(0, metric.length * progress);
+    canvas.drawPath(
+      partial,
+      Paint()
+        ..color = AppColors.warm
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.2
+        ..strokeCap = StrokeCap.round,
+    );
+    if (progress > 0.65) {
+      final opacity = ((progress - 0.65) / 0.35).clamp(0.0, 1.0);
+      final last = point(values.length - 1);
+      canvas.drawCircle(
+        last,
+        5,
+        Paint()..color = AppColors.ink.withValues(alpha: opacity),
+      );
+      canvas.drawCircle(
+        last,
+        2.6,
+        Paint()..color = AppColors.warm.withValues(alpha: opacity),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _BodyFatPainter oldDelegate) =>
+      oldDelegate.progress != progress || oldDelegate.values != values;
+}
+
 class DailyIntake {
   const DailyIntake({
     required this.day,

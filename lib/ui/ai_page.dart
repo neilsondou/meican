@@ -1,5 +1,3 @@
-import 'dart:ui' show ImageFilter;
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -8,7 +6,6 @@ import 'package:image_picker/image_picker.dart';
 
 import '../ai_keys.dart';
 import '../app_state.dart';
-import '../cloud_sync.dart';
 import '../glm_service.dart';
 import '../models.dart';
 import 'components.dart';
@@ -17,10 +14,9 @@ import 'record_page.dart';
 import 'theme.dart';
 
 class AiCapturePage extends StatefulWidget {
-  const AiCapturePage({super.key, required this.state, required this.cloud});
+  const AiCapturePage({super.key, required this.state});
 
   final AppState state;
-  final CloudSync cloud;
 
   @override
   State<AiCapturePage> createState() => _AiCapturePageState();
@@ -39,8 +35,7 @@ class _AiCapturePageState extends State<AiCapturePage> {
 
   double get total => items.fold(0, (sum, item) => sum + item.kcal);
 
-  bool get canRecognize =>
-      kIsWeb ? widget.cloud.isLoggedIn : AiKeyPool.isConfigured;
+  bool get canRecognize => kIsWeb || AiKeyPool.isConfigured;
 
   static String _currentMealType() {
     final hour = DateTime.now().hour;
@@ -58,10 +53,7 @@ class _AiCapturePageState extends State<AiCapturePage> {
 
   Future<void> chooseImage(ImageSource source) async {
     if (!canRecognize) {
-      showAppMessage(
-        context,
-        kIsWeb ? '请先在「我的 > 云同步」登录，再使用照片识别。' : '当前版本未启用图片识别服务，请安装配置后的版本。',
-      );
+      showAppMessage(context, '当前版本未启用图片识别服务，请安装配置后的版本。');
       return;
     }
     try {
@@ -125,7 +117,6 @@ class _AiCapturePageState extends State<AiCapturePage> {
         mimeType: mimeType,
         instruction: instruction,
         currentItems: instruction.isEmpty ? const [] : items,
-        proxyToken: kIsWeb ? widget.cloud.token : null,
       );
       if (!mounted) return;
       setState(() {
@@ -248,10 +239,6 @@ class _AiCapturePageState extends State<AiCapturePage> {
                         color: AppColors.secondary,
                       ),
                     ),
-                    if (kIsWeb && !hasImage && !widget.cloud.isLoggedIn) ...[
-                      const SizedBox(height: 16),
-                      const _WebLoginNotice(),
-                    ],
                     const SizedBox(height: 28),
                     if (!hasImage) ...[
                       _CaptureCard(
@@ -551,46 +538,6 @@ class _UsageNote extends StatelessWidget {
   }
 }
 
-class _WebLoginNotice extends StatelessWidget {
-  const _WebLoginNotice();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-      decoration: BoxDecoration(
-        color: const Color(0x12FFFFFF),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.glassBorder),
-      ),
-      child: const Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: EdgeInsets.only(top: 1),
-            child: Icon(
-              CupertinoIcons.lock,
-              size: 15,
-              color: AppColors.tertiary,
-            ),
-          ),
-          SizedBox(width: 9),
-          Expanded(
-            child: Text(
-              '网页端需要先登录云同步，才能使用照片识别。前往「我的 > 云同步」登录。',
-              style: TextStyle(
-                fontSize: 12,
-                height: 1.6,
-                color: AppColors.secondary,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _ImagePreview extends StatelessWidget {
   const _ImagePreview({required this.bytes, required this.onReplace});
 
@@ -603,7 +550,7 @@ class _ImagePreview extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(color: const Color(0x29FFFFFF)),
-        boxShadow: AppShadows.card,
+        boxShadow: kIsWeb ? null : AppShadows.card,
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(AppRadius.card - 1),
@@ -990,96 +937,95 @@ class _ResultDock extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(28),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x8C000000),
-            blurRadius: 34,
-            offset: Offset(0, 16),
-          ),
-        ],
+        boxShadow: kIsWeb
+            ? null
+            : const [
+                BoxShadow(
+                  color: Color(0x8C000000),
+                  blurRadius: 34,
+                  offset: Offset(0, 16),
+                ),
+              ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(28),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-          child: Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: const Color(0xF20C0C0D),
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(color: const Color(0x29FFFFFF)),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: controller,
-                    enabled: !busy,
-                    minLines: 1,
-                    maxLines: 3,
-                    textInputAction: TextInputAction.send,
-                    onChanged: (_) => onChanged(),
-                    onSubmitted: (_) => canSend ? onSend() : null,
-                    style: const TextStyle(fontSize: 14.5, height: 1.4),
-                    decoration: InputDecoration(
-                      hintText: '微调，例如：米饭只有半碗',
-                      isDense: true,
-                      filled: true,
-                      fillColor: const Color(0x14FFFFFF),
-                      contentPadding: const EdgeInsets.fromLTRB(16, 14, 4, 14),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(22),
-                        borderSide: BorderSide.none,
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: const Color(0xF20C0C0D),
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: const Color(0x29FFFFFF)),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  enabled: !busy,
+                  minLines: 1,
+                  maxLines: 3,
+                  textInputAction: TextInputAction.send,
+                  onChanged: (_) => onChanged(),
+                  onSubmitted: (_) => canSend ? onSend() : null,
+                  style: const TextStyle(fontSize: 14.5, height: 1.4),
+                  decoration: InputDecoration(
+                    hintText: '微调，例如：米饭只有半碗',
+                    isDense: true,
+                    filled: true,
+                    fillColor: const Color(0x14FFFFFF),
+                    contentPadding: const EdgeInsets.fromLTRB(16, 14, 4, 14),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(22),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(22),
+                      borderSide: const BorderSide(color: AppColors.line),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(22),
+                      borderSide: const BorderSide(
+                        color: AppColors.accent,
+                        width: 1.2,
                       ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(22),
-                        borderSide: const BorderSide(color: AppColors.line),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(22),
-                        borderSide: const BorderSide(
-                          color: AppColors.accent,
-                          width: 1.2,
-                        ),
-                      ),
-                      suffixIcon: Padding(
-                        padding: const EdgeInsets.only(right: 4),
-                        child: Pressable(
-                          onTap: canSend ? onSend : null,
-                          scale: 0.88,
-                          semanticLabel: '重新识别',
-                          child: SizedBox.square(
-                            dimension: 40,
-                            child: Center(
-                              child: busy
-                                  ? const SizedBox.square(
-                                      dimension: 17,
-                                      child: CupertinoActivityIndicator(
-                                        radius: 8,
-                                        color: AppColors.accentDeep,
-                                      ),
-                                    )
-                                  : Icon(
-                                      CupertinoIcons.arrow_up_circle_fill,
-                                      size: 24,
-                                      color: canSend
-                                          ? AppColors.accentDeep
-                                          : AppColors.tertiary.withValues(
-                                              alpha: 0.45,
-                                            ),
+                    ),
+                    suffixIcon: Padding(
+                      padding: const EdgeInsets.only(right: 4),
+                      child: Pressable(
+                        onTap: canSend ? onSend : null,
+                        scale: 0.88,
+                        semanticLabel: '重新识别',
+                        child: SizedBox.square(
+                          dimension: 40,
+                          child: Center(
+                            child: busy
+                                ? const SizedBox.square(
+                                    dimension: 17,
+                                    child: CupertinoActivityIndicator(
+                                      radius: 8,
+                                      color: AppColors.accentDeep,
                                     ),
-                            ),
+                                  )
+                                : Icon(
+                                    CupertinoIcons.arrow_up_circle_fill,
+                                    size: 24,
+                                    color: canSend
+                                        ? AppColors.accentDeep
+                                        : AppColors.tertiary.withValues(
+                                            alpha: 0.45,
+                                          ),
+                                  ),
                           ),
                         ),
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
-                _SaveAction(enabled: canSave, saving: saving, onTap: onSave),
-              ],
-            ),
+              ),
+              const SizedBox(width: 10),
+              _SaveAction(enabled: canSave, saving: saving, onTap: onSave),
+            ],
           ),
         ),
       ),
@@ -1114,13 +1060,15 @@ class _SaveAction extends StatelessWidget {
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(AppRadius.pill),
             border: Border.all(color: const Color(0x66FFFFFF)),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x59000000),
-                blurRadius: 20,
-                offset: Offset(0, 8),
-              ),
-            ],
+            boxShadow: kIsWeb
+                ? null
+                : const [
+                    BoxShadow(
+                      color: Color(0x59000000),
+                      blurRadius: 20,
+                      offset: Offset(0, 8),
+                    ),
+                  ],
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
