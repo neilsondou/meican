@@ -7,10 +7,10 @@ const _localPreview = ['localhost', '127.0.0.1'].includes(location.hostname);
 // 固定到具体提交，避免 jsDelivr 的 main 分支缓存导致新旧版本混用。
 const _staticBase = _localPreview
   ? '/'
-  : 'https://cdn.jsdmirror.com/gh/neilsondou/meican-web@5ca0e0cf4450f3fd37908c4d5ce42a69d5c88aa0/';
+  : 'https://cdn.jsdmirror.com/gh/neilsondou/meican-web@c13916cd6de344b6686118dda386a1600f41f99f/';
 const _canvasKitBase = _localPreview
   ? 'canvaskit'
-  : 'https://cdn.jsdmirror.com/gh/neilsondou/meican-web@5ca0e0cf4450f3fd37908c4d5ce42a69d5c88aa0/canvaskit';
+  : 'https://cdn.jsdmirror.com/gh/neilsondou/meican-web@c13916cd6de344b6686118dda386a1600f41f99f/canvaskit';
 
 _flutter.loader.load({
   config: {
