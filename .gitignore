@@ -44,6 +44,11 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Android release signing (Codemagic injects these at build time)
+/android/key.properties
+/android/app/*.jks
+/android/app/*.keystore
+
 # Local previews, packaging output and backups
 /preview-*.png
 /dist/

@@ -69,19 +69,35 @@ flutter build web --release --no-web-resources-cdn
 
 ## Codemagic 构建
 
-仓库根目录的 `codemagic.yaml` 包含两个工作流：
+仓库根目录的 `codemagic.yaml` 包含两个工作流，Flutter 固定为 3.44.0，iOS 使用 Xcode 26.6：
 
 | 工作流 | 说明 |
 | --- | --- |
 | `ios-unsigned` | 无需 Apple 签名，构建真机 Release，产出未签名 `MeiCan-iOS-unsigned.ipa` |
-| `android-release` | 构建 Android Release APK |
+| `android-release` | 构建 Android Release APK，产出 `app-release.apk` |
 
-### 配置内置识别密钥
+每次构建会把 Codemagic 的 `BUILD_NUMBER` 写进版本号，方便覆盖安装。
 
-1. 在 Codemagic 中把本仓库添加为应用，并选择使用仓库里的 `codemagic.yaml`
-2. 打开应用设置里的 Environment variables，新增 `MEICAN_AI_KEYS`，勾选 Secure
-3. 值填多个密钥，用逗号分隔，例如 `key1,key2,key3,key4`
-4. 重新触发构建；工作流会检查该变量，缺失时直接给出提示并停止
+### 可选环境变量
+
+以下变量都在 Codemagic → 应用 → Environment variables 中配置，不需要写进仓库：
+
+| 变量 | 作用 |
+| --- | --- |
+| `MEICAN_AI_KEYS` | 多个密钥用逗号分隔；不填则使用 `lib/ai_keys.dart` 内置测试密钥 |
+| `ANDROID_KEYSTORE_BASE64` | release keystore 的 base64；不填时 APK 使用 debug 签名 |
+| `ANDROID_KEYSTORE_PASSWORD` | keystore 密码 |
+| `ANDROID_KEY_ALIAS` | key alias |
+| `ANDROID_KEY_PASSWORD` | key 密码 |
+
+需要长期覆盖安装时再配置 Android 签名。生成 keystore 后执行
+`base64 -w 0 upload-keystore.jks`（macOS 用 `base64 -i upload-keystore.jks`）填入
+`ANDROID_KEYSTORE_BASE64`，其余变量按生成时填写；缺少这些变量也能正常构建，只是每次签名不同。
+
+### Android APK
+
+选择 `android-release` 工作流开始构建，完成后在 Artifacts 下载 `app-release.apk`。
+主 AndroidManifest 已声明 `INTERNET` 权限，release 包可以正常调用 AI 和云同步。
 
 ### iOS 自签安装
 
@@ -90,3 +106,4 @@ flutter build web --release --no-web-resources-cdn
 3. 用 AltStore、Sideloadly 或你自己的证书签名后安装到 iPhone
 
 Codemagic 只负责产出未签名 IPA，不需要配置 Apple 开发者证书或描述文件；IPA 必须先自签才能安装。
+如果需要 Codemagic 直接产出可安装的签名 IPA，需要再配置 Apple 开发者账号、证书和描述文件，当前配置不包含这一步。
