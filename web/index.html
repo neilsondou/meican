@@ -19,7 +19,18 @@
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="每餐 — 简单记录饮食、热量与体重趋势。">
-  <meta name="theme-color" content="#000000">
+  <meta id="meican-theme-color" name="theme-color" content="#000000">
+  <script>
+    // 启动前先按已保存的偏好铺底色，避免亮色模式刷新时闪黑。
+    (function () {
+      try {
+        var light = localStorage.getItem('flutter.meican_light_mode') === 'true';
+        document.documentElement.setAttribute('data-theme', light ? 'light' : 'dark');
+        var meta = document.getElementById('meican-theme-color');
+        if (meta) meta.setAttribute('content', light ? '#F4EFE5' : '#000000');
+      } catch (error) {}
+    })();
+  </script>
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
@@ -49,11 +60,25 @@
     crossorigin
   >
   <style>
+    :root {
+      --meican-bg: #000;
+      --meican-fg: #f5f5f7;
+      --meican-muted: rgba(245, 245, 247, 0.46);
+      --meican-track: rgba(245, 245, 247, 0.14);
+    }
+
+    html[data-theme="light"] {
+      --meican-bg: #f4efe5;
+      --meican-fg: #29251e;
+      --meican-muted: rgba(41, 37, 30, 0.45);
+      --meican-track: rgba(91, 76, 55, 0.14);
+    }
+
     html,
     body {
       margin: 0;
       height: 100%;
-      background: #000;
+      background: var(--meican-bg);
     }
 
     /* 浏览器会给 Flutter Web 的语义节点加上链接下划线。 */
@@ -70,8 +95,8 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      background: #000;
-      color: #f5f5f7;
+      background: var(--meican-bg);
+      color: var(--meican-fg);
       font-family: -apple-system, BlinkMacSystemFont, "PingFang SC",
         "Microsoft YaHei", sans-serif;
       transition: opacity 320ms ease;
@@ -85,7 +110,7 @@
     #meican-splash .loading-label {
       font-size: 12px;
       letter-spacing: 2px;
-      color: rgba(245, 245, 247, 0.46);
+      color: var(--meican-muted);
     }
 
     #meican-splash .bar {
@@ -95,7 +120,7 @@
       margin-top: 12px;
       overflow: hidden;
       border-radius: 99px;
-      background: rgba(245, 245, 247, 0.14);
+      background: var(--meican-track);
     }
 
     #meican-splash .bar::after {

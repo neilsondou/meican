@@ -233,7 +233,7 @@ class _AiCapturePageState extends State<AiCapturePage> {
                     const SizedBox(height: 14),
                     Text(
                       _subtitle(hasImage),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14.5,
                         height: 1.7,
                         color: AppColors.secondary,
@@ -317,7 +317,7 @@ class _AiCapturePageState extends State<AiCapturePage> {
                           ],
                         ),
                         const SizedBox(height: 26),
-                        const Text('保存为', style: AppTextStyles.eyebrow),
+                        Text('保存为', style: AppTextStyles.eyebrow),
                         const SizedBox(height: 12),
                         PillSegmented<String>(
                           options: const [
@@ -331,7 +331,7 @@ class _AiCapturePageState extends State<AiCapturePage> {
                               setState(() => mealType = value),
                         ),
                         const SizedBox(height: 20),
-                        const Text(
+                        Text(
                           '轻点食物可以调整克数与热量。不同意估算，就点上面的「和ai犟嘴（我没吃这么多）」，'
                           'AI 会按你的说法重新估算并覆盖当前清单。',
                           style: TextStyle(
@@ -386,7 +386,7 @@ class _CaptureCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return SurfaceCard(
       elevated: true,
-      borderColor: const Color(0x33FFFFFF),
+      borderColor: AppColors.borderStrong,
       padding: const EdgeInsets.fromLTRB(26, 26, 26, 26),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -402,14 +402,14 @@ class _CaptureCard extends StatelessWidget {
                   border: Border.all(color: AppColors.glassBorder),
                 ),
                 alignment: Alignment.center,
-                child: const Icon(
+                child: Icon(
                   CupertinoIcons.camera_viewfinder,
                   size: 24,
                   color: AppColors.accentDeep,
                 ),
               ),
               const Spacer(),
-              const Tag(
+              Tag(
                 label: '约 10–20 秒',
                 color: AppColors.accentDeep,
                 background: AppColors.accentSoft,
@@ -417,7 +417,7 @@ class _CaptureCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 24),
-          const Text(
+          Text(
             '拍下这一餐',
             style: TextStyle(
               fontSize: 24,
@@ -428,7 +428,7 @@ class _CaptureCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          const Text(
+          Text(
             '把整餐放进画面，光线尽量均匀。识别后逐项核对克数，再保存到今天的记录。',
             style: TextStyle(
               fontSize: 13.5,
@@ -471,11 +471,11 @@ class _ServiceNotice extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
-        color: const Color(0x12FFFFFF),
+        color: AppColors.glass,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.glassBorder),
       ),
-      child: const Row(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
@@ -508,7 +508,7 @@ class _UsageNote extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const SurfaceCard(
+    return SurfaceCard(
       padding: EdgeInsets.fromLTRB(24, 22, 24, 22),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -549,7 +549,7 @@ class _ImagePreview extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: const Color(0x29FFFFFF)),
+        border: Border.all(color: AppColors.borderStrong),
         boxShadow: kIsWeb ? null : AppShadows.card,
       ),
       child: ClipRRect(
@@ -579,7 +579,7 @@ class _ImagePreview extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.surface,
+                      color: AppColors.onImage,
                     ),
                   ),
                 ),
@@ -608,7 +608,7 @@ class _ImagePreview extends StatelessWidget {
                           Icon(
                             CupertinoIcons.camera_rotate,
                             size: 13,
-                            color: AppColors.surface,
+                            color: AppColors.onImage,
                           ),
                           SizedBox(width: 5),
                           Text(
@@ -616,7 +616,7 @@ class _ImagePreview extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 11.5,
                               fontWeight: FontWeight.w600,
-                              color: AppColors.surface,
+                              color: AppColors.onImage,
                             ),
                           ),
                         ],
@@ -640,11 +640,11 @@ class _AnalyzingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SurfaceCard(
-      borderColor: const Color(0x29FFFFFF),
+      borderColor: AppColors.borderStrong,
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
       child: Row(
         children: [
-          const SizedBox.square(
+          SizedBox.square(
             dimension: 22,
             child: CupertinoActivityIndicator(
               radius: 10,
@@ -658,7 +658,7 @@ class _AnalyzingCard extends StatelessWidget {
               children: [
                 Text(
                   hasItems ? '正在按你的要求重新估算…' : '正在辨认食物与分量…',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: AppColors.ink,
@@ -667,7 +667,7 @@ class _AnalyzingCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   hasItems ? '完成后会覆盖当前清单，请稍候。' : '通常需要 10–20 秒，请稍候。',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12.5,
                     height: 1.5,
                     color: AppColors.secondary,
@@ -691,11 +691,11 @@ class _ReplyNote extends StatelessWidget {
   Widget build(BuildContext context) {
     return SurfaceCard(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
-      borderColor: const Color(0x29FFFFFF),
+      borderColor: AppColors.borderStrong,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(top: 2),
             child: Icon(
               CupertinoIcons.sparkles,
@@ -708,7 +708,7 @@ class _ReplyNote extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   '识别说明',
                   style: TextStyle(
                     fontSize: 11.5,
@@ -719,7 +719,7 @@ class _ReplyNote extends StatelessWidget {
                 const SizedBox(height: 5),
                 Text(
                   reply,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     height: 1.65,
                     color: AppColors.secondary,
@@ -752,9 +752,9 @@ class _ArgueAction extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.accentSoft,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0x33FFFFFF)),
+          border: Border.all(color: AppColors.borderStrong),
         ),
-        child: const Row(
+        child: Row(
           children: [
             Icon(
               CupertinoIcons.chat_bubble_2,
@@ -810,7 +810,7 @@ class _ItemsHeader extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        const Expanded(child: Text('食物列表', style: AppTextStyles.sectionTitle)),
+        Expanded(child: Text('食物列表', style: AppTextStyles.sectionTitle)),
         Tag(label: '$count 项'),
         const SizedBox(width: 10),
         Text('${formatCalories(total)} 大卡', style: AppTextStyles.numericInline),
@@ -858,7 +858,7 @@ class _AiItemRow extends StatelessWidget {
                     item.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 15.5,
                       fontWeight: FontWeight.w500,
                       color: AppColors.ink,
@@ -867,10 +867,7 @@ class _AiItemRow extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     '${formatNumber(item.grams)} 克',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.secondary,
-                    ),
+                    style: TextStyle(fontSize: 12, color: AppColors.secondary),
                   ),
                 ],
               ),
@@ -883,7 +880,7 @@ class _AiItemRow extends StatelessWidget {
                   formatCalories(item.kcal),
                   style: AppTextStyles.numericInline,
                 ),
-                const Text(
+                Text(
                   '大卡',
                   style: TextStyle(fontSize: 9.5, color: AppColors.tertiary),
                 ),
@@ -895,7 +892,7 @@ class _AiItemRow extends StatelessWidget {
               haptic: true,
               scale: 0.85,
               semanticLabel: '移除${item.name}',
-              child: const SizedBox(
+              child: SizedBox(
                 width: 38,
                 height: 40,
                 child: Icon(
@@ -937,24 +934,16 @@ class _ResultDock extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(28),
-        boxShadow: kIsWeb
-            ? null
-            : const [
-                BoxShadow(
-                  color: Color(0x8C000000),
-                  blurRadius: 34,
-                  offset: Offset(0, 16),
-                ),
-              ],
+        boxShadow: kIsWeb ? null : AppShadows.raised,
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(28),
         child: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: const Color(0xF20C0C0D),
+            color: AppColors.sheet,
             borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: const Color(0x29FFFFFF)),
+            border: Border.all(color: AppColors.borderStrong),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -973,7 +962,7 @@ class _ResultDock extends StatelessWidget {
                     hintText: '微调，例如：米饭只有半碗',
                     isDense: true,
                     filled: true,
-                    fillColor: const Color(0x14FFFFFF),
+                    fillColor: AppColors.fieldFill,
                     contentPadding: const EdgeInsets.fromLTRB(16, 14, 4, 14),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(22),
@@ -981,11 +970,11 @@ class _ResultDock extends StatelessWidget {
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(22),
-                      borderSide: const BorderSide(color: AppColors.line),
+                      borderSide: BorderSide(color: AppColors.line),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(22),
-                      borderSide: const BorderSide(
+                      borderSide: BorderSide(
                         color: AppColors.accent,
                         width: 1.2,
                       ),
@@ -1000,7 +989,7 @@ class _ResultDock extends StatelessWidget {
                           dimension: 40,
                           child: Center(
                             child: busy
-                                ? const SizedBox.square(
+                                ? SizedBox.square(
                                     dimension: 17,
                                     child: CupertinoActivityIndicator(
                                       radius: 8,
@@ -1059,22 +1048,14 @@ class _SaveAction extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(AppRadius.pill),
-            border: Border.all(color: const Color(0x66FFFFFF)),
-            boxShadow: kIsWeb
-                ? null
-                : const [
-                    BoxShadow(
-                      color: Color(0x59000000),
-                      blurRadius: 20,
-                      offset: Offset(0, 8),
-                    ),
-                  ],
+            border: Border.all(color: AppColors.onSurfaceBorder),
+            boxShadow: kIsWeb ? null : AppShadows.card,
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               if (saving)
-                const SizedBox.square(
+                SizedBox.square(
                   dimension: 16,
                   child: CupertinoActivityIndicator(
                     radius: 8,
@@ -1082,13 +1063,13 @@ class _SaveAction extends StatelessWidget {
                   ),
                 )
               else
-                const Icon(
+                Icon(
                   CupertinoIcons.checkmark_alt,
                   size: 16,
                   color: AppColors.background,
                 ),
               const SizedBox(width: 7),
-              const Text(
+              Text(
                 '保存',
                 style: TextStyle(
                   fontSize: 14.5,
@@ -1161,7 +1142,7 @@ class _ArgueSheetState extends State<_ArgueSheet> {
           ),
           Row(
             children: [
-              const Icon(
+              Icon(
                 CupertinoIcons.square_list,
                 size: 14,
                 color: AppColors.tertiary,
@@ -1169,10 +1150,7 @@ class _ArgueSheetState extends State<_ArgueSheet> {
               const SizedBox(width: 7),
               Text(
                 '当前 ${widget.items.length} 项 · ${formatCalories(total)} 大卡',
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.secondary,
-                ),
+                style: TextStyle(fontSize: 12, color: AppColors.secondary),
               ),
             ],
           ),
@@ -1208,7 +1186,7 @@ class _ArgueSheetState extends State<_ArgueSheet> {
             onPressed: controller.text.trim().isEmpty ? null : submit,
           ),
           const SizedBox(height: 10),
-          const Center(
+          Center(
             child: Text(
               '会覆盖当前清单，之后仍可逐项修改。',
               style: TextStyle(

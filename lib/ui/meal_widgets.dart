@@ -19,25 +19,25 @@ class MealVisual {
 }
 
 MealVisual mealVisual(String mealType) => switch (mealType) {
-  '早餐' => const MealVisual(
+  '早餐' => MealVisual(
     icon: CupertinoIcons.sunrise,
-    color: Color(0xFFD9A77A),
-    background: Color(0x1FD9A77A),
+    color: AppColors.warm,
+    background: AppColors.warm.withValues(alpha: 0.12),
   ),
-  '午餐' => const MealVisual(
+  '午餐' => MealVisual(
     icon: CupertinoIcons.sun_max,
     color: AppColors.accentDeep,
     background: AppColors.accentSoft,
   ),
-  '晚餐' => const MealVisual(
+  '晚餐' => MealVisual(
     icon: CupertinoIcons.moon_stars,
-    color: Color(0xFFA9B7C9),
-    background: Color(0x1FA9B7C9),
+    color: AppColors.cool,
+    background: AppColors.cool.withValues(alpha: 0.12),
   ),
-  _ => const MealVisual(
+  _ => MealVisual(
     icon: CupertinoIcons.sparkles,
     color: AppColors.warning,
-    background: Color(0x1FE29379),
+    background: AppColors.warning.withValues(alpha: 0.12),
   ),
 };
 
@@ -88,7 +88,7 @@ class MealSummaryTile extends StatelessWidget {
                   children: [
                     Text(
                       meal.mealType,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16.5,
                         fontWeight: FontWeight.w600,
                         letterSpacing: -0.2,
@@ -101,7 +101,7 @@ class MealSummaryTile extends StatelessWidget {
                         '$time$source',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11.5,
                           color: AppColors.tertiary,
                         ),
@@ -114,7 +114,7 @@ class MealSummaryTile extends StatelessWidget {
                   mealPreview(meal),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     height: 1.35,
                     color: AppColors.secondary,
@@ -131,7 +131,7 @@ class MealSummaryTile extends StatelessWidget {
                 formatCalories(meal.totalKcal),
                 style: AppTextStyles.numericInline,
               ),
-              const Text(
+              Text(
                 '大卡',
                 style: TextStyle(
                   fontSize: 9.5,
@@ -143,7 +143,7 @@ class MealSummaryTile extends StatelessWidget {
           ),
           if (showChevron) ...[
             const SizedBox(width: 8),
-            const Icon(
+            Icon(
               CupertinoIcons.chevron_right,
               size: 13,
               color: AppColors.tertiary,
@@ -216,7 +216,7 @@ class _MealDetailSheet extends StatelessWidget {
             onClose: () => Navigator.pop(context),
           ),
           if (meal.items.isEmpty)
-            const Text(
+            Text(
               '这一餐没有留下食物明细。',
               style: TextStyle(
                 fontSize: 14,
@@ -243,7 +243,7 @@ class _MealDetailSheet extends StatelessWidget {
                             children: [
                               Text(
                                 meal.items[index].name,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 15.5,
                                   fontWeight: FontWeight.w500,
                                   color: AppColors.ink,
@@ -252,7 +252,7 @@ class _MealDetailSheet extends StatelessWidget {
                               const SizedBox(height: 3),
                               Text(
                                 '${formatNumber(meal.items[index].grams)} 克',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 12,
                                   color: AppColors.secondary,
                                 ),
@@ -262,7 +262,7 @@ class _MealDetailSheet extends StatelessWidget {
                         ),
                         Text(
                           '${formatCalories(meal.items[index].kcal)} 大卡',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                             color: AppColors.ink,
@@ -276,7 +276,7 @@ class _MealDetailSheet extends StatelessWidget {
             ),
           if (meal.note.isNotEmpty) ...[
             const SizedBox(height: 20),
-            const Text(
+            Text(
               '备注',
               style: TextStyle(
                 fontSize: 12,
@@ -288,7 +288,7 @@ class _MealDetailSheet extends StatelessWidget {
             const SizedBox(height: 7),
             Text(
               meal.note,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 height: 1.65,
                 color: AppColors.secondary,

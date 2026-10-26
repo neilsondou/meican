@@ -173,7 +173,7 @@ class _RecordPageState extends State<RecordPage> {
                   ],
                 ),
               if (meals.isNotEmpty)
-                const Padding(
+                Padding(
                   padding: EdgeInsets.fromLTRB(4, 14, 4, 0),
                   child: Text(
                     '轻点某一餐，可以查看、编辑或删除。',
@@ -242,7 +242,7 @@ class _WeekCard extends StatelessWidget {
                     children: [
                       Text(
                         monthLabel,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w600,
                           letterSpacing: -0.2,
@@ -250,7 +250,7 @@ class _WeekCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 5),
-                      const Icon(
+                      Icon(
                         CupertinoIcons.chevron_down,
                         size: 11,
                         color: AppColors.tertiary,
@@ -273,7 +273,7 @@ class _WeekCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(15),
                       border: Border.all(color: AppColors.glassBorder),
                     ),
-                    child: const Text(
+                    child: Text(
                       '今天',
                       style: TextStyle(
                         fontSize: 11.5,
@@ -372,10 +372,14 @@ class _DayCell extends StatelessWidget {
           height: 64,
           margin: const EdgeInsets.symmetric(horizontal: 1.5),
           decoration: BoxDecoration(
-            color: selected ? const Color(0x26FFFFFF) : Colors.transparent,
+            color: selected
+                ? AppColors.ink.withValues(alpha: 0.15)
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
-              color: selected ? const Color(0x4DFFFFFF) : AppColors.glassBorder,
+              color: selected
+                  ? AppColors.ink.withValues(alpha: 0.3)
+                  : AppColors.glassBorder,
               width: 0.8,
             ),
           ),
@@ -442,7 +446,7 @@ class _DaySummaryCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Text(
+              Text(
                 '这一天吃了',
                 style: TextStyle(
                   fontSize: 13,
@@ -469,7 +473,7 @@ class _DaySummaryCard extends StatelessWidget {
             children: [
               Text(formatCalories(calories), style: AppTextStyles.numericLarge),
               const SizedBox(width: 6),
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(bottom: 2),
                 child: Text(
                   '大卡',
@@ -481,7 +485,7 @@ class _DaySummaryCard extends StatelessWidget {
           const SizedBox(height: 14),
           Text(
             _sentence(),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               height: 1.65,
               color: AppColors.secondary,
@@ -495,7 +499,7 @@ class _DaySummaryCard extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  const ColoredBox(color: AppColors.surfaceMuted),
+                  ColoredBox(color: AppColors.surfaceMuted),
                   RepaintBoundary(
                     child: TweenAnimationBuilder<double>(
                       tween: Tween(begin: 0, end: ratio),
@@ -510,11 +514,8 @@ class _DaySummaryCard extends StatelessWidget {
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               colors: over
-                                  ? const [Color(0xFFD9A77A), AppColors.warning]
-                                  : const [
-                                      Color(0xFF8FA98F),
-                                      AppColors.accentDeep,
-                                    ],
+                                  ? [AppColors.warm, AppColors.warning]
+                                  : [AppColors.barTop, AppColors.accentDeep],
                             ),
                           ),
                           child: const SizedBox.expand(),
@@ -531,10 +532,7 @@ class _DaySummaryCard extends StatelessWidget {
             children: [
               Text(
                 '目标 ${formatCalories(tdee)} 大卡',
-                style: const TextStyle(
-                  fontSize: 11.5,
-                  color: AppColors.tertiary,
-                ),
+                style: TextStyle(fontSize: 11.5, color: AppColors.tertiary),
               ),
               const Spacer(),
               Text(
@@ -712,7 +710,7 @@ class _RecordMealPageState extends State<_RecordMealPage> {
                         title: widget.existing == null ? '记一餐' : '编辑这一餐',
                       ),
                       const SizedBox(height: 30),
-                      const Text('哪一餐', style: AppTextStyles.eyebrow),
+                      Text('哪一餐', style: AppTextStyles.eyebrow),
                       const SizedBox(height: 12),
                       PillSegmented<String>(
                         value: mealType,
@@ -824,7 +822,7 @@ class _MealItemRow extends StatelessWidget {
                 children: [
                   Text(
                     item.name,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 15.5,
                       fontWeight: FontWeight.w600,
                       color: AppColors.ink,
@@ -833,17 +831,14 @@ class _MealItemRow extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     '${formatNumber(item.grams)} 克 · 轻点修改',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.secondary,
-                    ),
+                    style: TextStyle(fontSize: 12, color: AppColors.secondary),
                   ),
                 ],
               ),
             ),
             Text(
               '${formatCalories(item.kcal)} 大卡',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
                 color: AppColors.ink,
@@ -856,7 +851,7 @@ class _MealItemRow extends StatelessWidget {
               haptic: true,
               scale: 0.85,
               semanticLabel: '移除${item.name}',
-              child: const SizedBox(
+              child: SizedBox(
                 width: 38,
                 height: 40,
                 child: Icon(
@@ -904,7 +899,7 @@ class _PickerAction extends StatelessWidget {
             const SizedBox(width: 8),
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14.5,
                 fontWeight: FontWeight.w600,
                 color: AppColors.ink,
@@ -938,8 +933,8 @@ class _SaveDock extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-      decoration: const BoxDecoration(
-        color: Color(0xF20A0A0B),
+      decoration: BoxDecoration(
+        color: AppColors.dock,
         border: Border(top: BorderSide(color: AppColors.line)),
       ),
       child: SafeArea(
@@ -954,7 +949,7 @@ class _SaveDock extends StatelessWidget {
                 children: [
                   Text(
                     count == 0 ? '还没有添加食物' : '$count 项食物',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12.5,
                       color: AppColors.secondary,
                     ),
@@ -962,7 +957,7 @@ class _SaveDock extends StatelessWidget {
                   const Spacer(),
                   Text(
                     '共 ${formatCalories(total)} 大卡',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: AppColors.ink,
@@ -1091,7 +1086,7 @@ class _FoodPickerPageState extends State<_FoodPickerPage> {
                                             children: [
                                               Text(
                                                 food.name,
-                                                style: const TextStyle(
+                                                style: TextStyle(
                                                   fontSize: 15.5,
                                                   fontWeight: FontWeight.w500,
                                                   color: AppColors.ink,
@@ -1100,7 +1095,7 @@ class _FoodPickerPageState extends State<_FoodPickerPage> {
                                               const SizedBox(height: 4),
                                               Text(
                                                 '${food.category} · 默认 ${formatNumber(food.defaultGrams)} 克',
-                                                style: const TextStyle(
+                                                style: TextStyle(
                                                   fontSize: 11.5,
                                                   color: AppColors.secondary,
                                                 ),
@@ -1110,13 +1105,13 @@ class _FoodPickerPageState extends State<_FoodPickerPage> {
                                         ),
                                         Text(
                                           '${formatCalories(food.kcalPer100)} 大卡',
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 12,
                                             color: AppColors.secondary,
                                           ),
                                         ),
                                         const SizedBox(width: 10),
-                                        const Icon(
+                                        Icon(
                                           CupertinoIcons.plus_circle_fill,
                                           size: 21,
                                           color: AppColors.accent,
@@ -1253,7 +1248,7 @@ class _ManualItemPageState extends State<_ManualItemPage> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                const Text(
+                Text(
                   '按包装标签或实际称重填写，数字会更接近真实摄入。',
                   style: TextStyle(
                     fontSize: 12,
@@ -1281,7 +1276,7 @@ class _FieldLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       label,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 12,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.2,

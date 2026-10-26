@@ -13,9 +13,7 @@ class AppBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const RepaintBoundary(
-      child: ColoredBox(color: AppColors.background),
-    );
+    return RepaintBoundary(child: ColoredBox(color: AppColors.background));
   }
 }
 
@@ -262,7 +260,7 @@ class GroupedRow extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style:
                       titleStyle ??
-                      const TextStyle(
+                      TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                         letterSpacing: -0.2,
@@ -275,7 +273,7 @@ class GroupedRow extends StatelessWidget {
                     subtitle!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
                       height: 1.3,
                       color: AppColors.secondary,
@@ -289,7 +287,7 @@ class GroupedRow extends StatelessWidget {
             const SizedBox(width: 12),
             Text(
               detail!,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 color: AppColors.secondary,
                 fontFeatures: [FontFeature.tabularFigures()],
@@ -299,7 +297,7 @@ class GroupedRow extends StatelessWidget {
           if (trailing != null) ...[const SizedBox(width: 10), trailing!],
           if (showChevron && onTap != null) ...[
             const SizedBox(width: 8),
-            const Icon(
+            Icon(
               CupertinoIcons.chevron_right,
               size: 14,
               color: AppColors.tertiary,
@@ -344,14 +342,14 @@ class SectionHeader extends StatelessWidget {
                   children: [
                     Text(
                       actionLabel!,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13.5,
                         fontWeight: FontWeight.w600,
                         color: AppColors.accentDeep,
                       ),
                     ),
                     const SizedBox(width: 2),
-                    const Icon(
+                    Icon(
                       CupertinoIcons.chevron_right,
                       size: 11,
                       color: AppColors.accentDeep,
@@ -390,7 +388,7 @@ class PageHeader extends StatelessWidget {
               if (eyebrow != null) ...[
                 Text(
                   eyebrow!,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.4,
@@ -421,7 +419,7 @@ class CircleIconButton extends StatelessWidget {
     this.size = 40,
     this.iconSize = 19,
     this.background,
-    this.foreground = AppColors.ink,
+    this.foreground,
     this.borderColor,
   });
 
@@ -431,7 +429,7 @@ class CircleIconButton extends StatelessWidget {
   final double size;
   final double iconSize;
   final Color? background;
-  final Color foreground;
+  final Color? foreground;
   final Color? borderColor;
 
   @override
@@ -450,17 +448,9 @@ class CircleIconButton extends StatelessWidget {
               color: borderColor ?? AppColors.glassBorder,
               width: 1,
             ),
-            boxShadow: kIsWeb
-                ? null
-                : const [
-                    BoxShadow(
-                      color: Color(0x33000000),
-                      blurRadius: 12,
-                      offset: Offset(0, 4),
-                    ),
-                  ],
+            boxShadow: kIsWeb ? null : AppShadows.thumb,
           ),
-          child: Icon(icon, size: iconSize, color: foreground),
+          child: Icon(icon, size: iconSize, color: foreground ?? AppColors.ink),
         ),
       ),
     );
@@ -500,18 +490,10 @@ class ActionPill extends StatelessWidget {
           color: filled ? AppColors.surface : AppColors.glassStrong,
           borderRadius: BorderRadius.circular(AppRadius.pill),
           border: Border.all(
-            color: filled ? const Color(0x66FFFFFF) : AppColors.glassBorder,
+            color: filled ? AppColors.onSurfaceBorder : AppColors.glassBorder,
             width: 1,
           ),
-          boxShadow: kIsWeb
-              ? null
-              : const [
-                  BoxShadow(
-                    color: Color(0x4D000000),
-                    blurRadius: 26,
-                    offset: Offset(0, 12),
-                  ),
-                ],
+          boxShadow: kIsWeb ? null : AppShadows.card,
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -572,22 +554,14 @@ class PrimaryButton extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(AppRadius.pill),
-              border: Border.all(color: const Color(0x66FFFFFF), width: 1),
-              boxShadow: kIsWeb
-                  ? null
-                  : const [
-                      BoxShadow(
-                        color: Color(0x59000000),
-                        blurRadius: 28,
-                        offset: Offset(0, 12),
-                      ),
-                    ],
+              border: Border.all(color: AppColors.onSurfaceBorder, width: 1),
+              boxShadow: kIsWeb ? null : AppShadows.raised,
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (busy)
-                  const SizedBox.square(
+                  SizedBox.square(
                     dimension: 17,
                     child: CupertinoActivityIndicator(
                       radius: 8,
@@ -599,7 +573,7 @@ class PrimaryButton extends StatelessWidget {
                 if (busy || icon != null) const SizedBox(width: 9),
                 Text(
                   busy ? '请稍候' : label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16.5,
                     fontWeight: FontWeight.w600,
                     letterSpacing: -0.2,
@@ -660,7 +634,7 @@ class PillSegmented<T> extends StatelessWidget {
                 width: width,
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    color: const Color(0xFF232326),
+                    color: AppColors.pillThumb,
                     borderRadius: BorderRadius.circular(19),
                     boxShadow: kIsWeb ? null : AppShadows.thumb,
                   ),
@@ -736,7 +710,7 @@ class ChoicePill extends StatelessWidget {
           color: selected ? AppColors.surface : AppColors.glass,
           borderRadius: BorderRadius.circular(21),
           border: Border.all(
-            color: selected ? const Color(0x66FFFFFF) : AppColors.glassBorder,
+            color: selected ? AppColors.onSurfaceBorder : AppColors.glassBorder,
             width: 1,
           ),
         ),
@@ -758,29 +732,31 @@ class Tag extends StatelessWidget {
   const Tag({
     super.key,
     required this.label,
-    this.color = AppColors.accentDeep,
-    this.background = AppColors.accentSoft,
+    this.color,
+    this.background,
     this.icon,
   });
 
   final String label;
-  final Color color;
-  final Color background;
+  final Color? color;
+  final Color? background;
   final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
+    final resolvedColor = color ?? AppColors.accentDeep;
+    final resolvedBackground = background ?? AppColors.accentSoft;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
-        color: background,
+        color: resolvedBackground,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 11, color: color),
+            Icon(icon, size: 11, color: resolvedColor),
             const SizedBox(width: 4),
           ],
           Text(
@@ -790,7 +766,7 @@ class Tag extends StatelessWidget {
               height: 1.1,
               fontWeight: FontWeight.w600,
               letterSpacing: 0.1,
-              color: color,
+              color: resolvedColor,
             ),
           ),
         ],
@@ -822,7 +798,7 @@ class MetricValue extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11.5,
             fontWeight: FontWeight.w500,
             color: AppColors.secondary,
@@ -848,10 +824,7 @@ class MetricValue extends StatelessWidget {
             const SizedBox(width: 3),
             Text(
               unit,
-              style: const TextStyle(
-                fontSize: 10.5,
-                color: AppColors.secondary,
-              ),
+              style: TextStyle(fontSize: 10.5, color: AppColors.secondary),
             ),
           ],
         ),
@@ -897,7 +870,7 @@ class EmptyState extends StatelessWidget {
           const SizedBox(height: 16),
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
               letterSpacing: -0.3,
@@ -907,7 +880,7 @@ class EmptyState extends StatelessWidget {
           const SizedBox(height: 7),
           Text(
             message,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
               height: 1.6,
               color: AppColors.secondary,
@@ -925,14 +898,14 @@ class EmptyState extends StatelessWidget {
                   children: [
                     Text(
                       actionLabel!,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14.5,
                         fontWeight: FontWeight.w600,
                         color: AppColors.accentDeep,
                       ),
                     ),
                     const SizedBox(width: 3),
-                    const Icon(
+                    Icon(
                       CupertinoIcons.chevron_right,
                       size: 11,
                       color: AppColors.accentDeep,
@@ -1100,7 +1073,7 @@ class SheetHeading extends StatelessWidget {
                   const SizedBox(height: 7),
                   Text(
                     subtitle!,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       height: 1.55,
                       color: AppColors.secondary,
@@ -1149,7 +1122,7 @@ class PageTopBar extends StatelessWidget {
         children: [
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.w600,
               letterSpacing: -0.2,
@@ -1248,9 +1221,9 @@ class _GlassSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final content = DecoratedBox(
       decoration: BoxDecoration(
-        color: const Color(0xF20C0C0D),
+        color: AppColors.sheet,
         borderRadius: BorderRadius.circular(AppRadius.sheet),
-        border: Border.all(color: const Color(0x1FFFFFFF), width: 1),
+        border: Border.all(color: AppColors.line, width: 1),
       ),
       child: Material(
         type: MaterialType.transparency,
@@ -1262,7 +1235,7 @@ class _GlassSheet extends StatelessWidget {
               width: 38,
               height: 4,
               decoration: BoxDecoration(
-                color: const Color(0x3DFFFFFF),
+                color: AppColors.handle,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -1314,7 +1287,7 @@ Future<DateTime?> showAppDatePicker(
         return Theme(
           data: Theme.of(context).copyWith(
             datePickerTheme: DatePickerThemeData(
-              backgroundColor: const Color(0xFF161618),
+              backgroundColor: AppColors.dateSheet,
               surfaceTintColor: Colors.transparent,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(28),
@@ -1333,9 +1306,9 @@ Future<DateTime?> showAppDatePicker(
     barrierColor: const Color(0x99000000),
     builder: (context) {
       return Container(
-        decoration: const BoxDecoration(
-          color: Color(0xFF161618),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        decoration: BoxDecoration(
+          color: AppColors.dateSheet,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
           border: Border(top: BorderSide(color: AppColors.glassBorder)),
         ),
         child: SafeArea(
@@ -1352,13 +1325,13 @@ Future<DateTime?> showAppDatePicker(
                       CupertinoButton(
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         onPressed: () => Navigator.pop(context),
-                        child: const Text(
+                        child: Text(
                           '取消',
                           style: TextStyle(color: AppColors.secondary),
                         ),
                       ),
                       const Spacer(),
-                      const Text(
+                      Text(
                         '选择日期',
                         style: TextStyle(
                           fontSize: 16,
@@ -1370,7 +1343,7 @@ Future<DateTime?> showAppDatePicker(
                       CupertinoButton(
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         onPressed: () => Navigator.pop(context, selected),
-                        child: const Text(
+                        child: Text(
                           '完成',
                           style: TextStyle(
                             color: AppColors.accentDeep,
@@ -1385,8 +1358,10 @@ Future<DateTime?> showAppDatePicker(
                 const HairLine(),
                 Expanded(
                   child: CupertinoTheme(
-                    data: const CupertinoThemeData(
-                      brightness: Brightness.dark,
+                    data: CupertinoThemeData(
+                      brightness: AppColors.isDark
+                          ? Brightness.dark
+                          : Brightness.light,
                       textTheme: CupertinoTextThemeData(
                         dateTimePickerTextStyle: TextStyle(
                           fontFamily: 'MeicanSans',
@@ -1511,17 +1486,9 @@ class _GlassAlert extends StatelessWidget {
     final content = Container(
       padding: const EdgeInsets.fromLTRB(22, 24, 22, 18),
       decoration: BoxDecoration(
-        color: const Color(0xE61A1A1C),
+        color: AppColors.dialog,
         borderRadius: BorderRadius.circular(40),
-        boxShadow: kIsWeb
-            ? null
-            : const [
-                BoxShadow(
-                  color: Color(0x8C000000),
-                  blurRadius: 50,
-                  offset: Offset(0, 24),
-                ),
-              ],
+        boxShadow: kIsWeb ? null : AppShadows.raised,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1529,7 +1496,7 @@ class _GlassAlert extends StatelessWidget {
         children: [
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 18.5,
               height: 1.3,
               fontWeight: FontWeight.w600,
@@ -1541,7 +1508,7 @@ class _GlassAlert extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             message,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14.5,
               height: 1.5,
               color: AppColors.secondary,
@@ -1607,7 +1574,7 @@ class _AlertAction extends StatelessWidget {
         height: 50,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: const Color(0x26FFFFFF),
+          color: AppColors.alertButton,
           borderRadius: BorderRadius.circular(25),
         ),
         child: Text(
@@ -1670,13 +1637,13 @@ class _ToastBubble extends StatelessWidget {
     final bubble = Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
       decoration: BoxDecoration(
-        color: const Color(0xF0141416),
+        color: AppColors.toast,
         borderRadius: BorderRadius.circular(22),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
+          Icon(
             CupertinoIcons.info_circle_fill,
             size: 17,
             color: AppColors.accentDeep,
@@ -1685,7 +1652,7 @@ class _ToastBubble extends StatelessWidget {
           Flexible(
             child: Text(
               message,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13.5,
                 height: 1.35,
                 fontWeight: FontWeight.w500,
@@ -1717,15 +1684,7 @@ class _ToastBubble extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(22),
-            boxShadow: kIsWeb
-                ? null
-                : const [
-                    BoxShadow(
-                      color: Color(0x73000000),
-                      blurRadius: 30,
-                      offset: Offset(0, 14),
-                    ),
-                  ],
+            boxShadow: kIsWeb ? null : AppShadows.card,
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(22),

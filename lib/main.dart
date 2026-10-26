@@ -13,6 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'app_config.dart';
 import 'app_fonts.dart';
 import 'app_state.dart';
+import 'app_theme.dart';
 import 'cloud_sync.dart';
 import 'external_link.dart';
 import 'ui/ai_page.dart';
@@ -26,7 +27,7 @@ import 'ui/theme.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('zh_CN');
-  SystemChrome.setSystemUIOverlayStyle(appSystemOverlay);
+  await AppThemeController.instance.load();
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   final state = AppState();
   runApp(MeiCanApp(state: state, cloud: CloudSync(state)));
@@ -87,35 +88,41 @@ class _MeiCanAppState extends State<MeiCanApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: '每餐',
-      debugShowCheckedModeBanner: false,
-      theme: buildAppTheme(),
-      darkTheme: buildAppTheme(),
-      themeMode: ThemeMode.dark,
-      locale: const Locale('zh', 'CN'),
-      supportedLocales: const [Locale('zh', 'CN'), Locale('en')],
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
-        value: appSystemOverlay,
-        child: DefaultTextStyle(
-          style: const TextStyle(
-            fontFamily: 'MeicanSans',
-            color: AppColors.ink,
-            decoration: TextDecoration.none,
+    return AnimatedBuilder(
+      animation: AppThemeController.instance,
+      builder: (context, _) {
+        final isDark = AppThemeController.instance.isDark;
+        return MaterialApp(
+          title: '每餐',
+          debugShowCheckedModeBanner: false,
+          theme: buildAppTheme(),
+          darkTheme: buildAppTheme(),
+          themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
+          locale: const Locale('zh', 'CN'),
+          supportedLocales: const [Locale('zh', 'CN'), Locale('en')],
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
+            value: appOverlayFor(isDark),
+            child: DefaultTextStyle(
+              style: TextStyle(
+                fontFamily: 'MeicanSans',
+                color: AppColors.ink,
+                decoration: TextDecoration.none,
+              ),
+              child: child ?? const SizedBox.shrink(),
+            ),
           ),
-          child: child ?? const SizedBox.shrink(),
-        ),
-      ),
-      home: _Root(
-        state: widget.state,
-        cloud: widget.cloud,
-        fontsReady: _fontsReady,
-      ),
+          home: _Root(
+            state: widget.state,
+            cloud: widget.cloud,
+            fontsReady: _fontsReady,
+          ),
+        );
+      },
     );
   }
 }
@@ -171,13 +178,13 @@ class LaunchView extends StatelessWidget {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          const AppBackground(),
+          AppBackground(),
           Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (showLabel) ...[
-                  const Text(
+                  Text(
                     '加载中',
                     style: TextStyle(
                       fontSize: 12,
@@ -191,10 +198,10 @@ class LaunchView extends StatelessWidget {
                   width: 108,
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(99),
-                    child: const LinearProgressIndicator(
+                    child: LinearProgressIndicator(
                       minHeight: 3,
                       color: AppColors.accent,
-                      backgroundColor: Color(0x24F5F5F7),
+                      backgroundColor: AppColors.surfaceMuted,
                     ),
                   ),
                 ),
@@ -288,13 +295,21 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: AppThemeController.instance,
+      builder: (context, _) => _buildShell(context),
+    );
+  }
+
+  Widget _buildShell(BuildContext context) {
+    final themeKey = AppThemeController.instance.isDark ? 'dark' : 'light';
     return Scaffold(
       backgroundColor: AppColors.background,
       extendBody: true,
       body: Stack(
         fit: StackFit.expand,
         children: [
-          const AppBackground(),
+          AppBackground(),
           SafeArea(
             bottom: false,
             child: Center(
@@ -308,26 +323,38 @@ class _AppShellState extends State<AppShell> {
                       physics: const NeverScrollableScrollPhysics(),
                       children: [
                         _KeepAlivePage(
-                          child: HomePage(
-                            state: widget.state,
-                            onCamera: openCamera,
-                            onOpenRecord: () => select(1),
-                            onOpenProgress: () => select(2),
+                          child: KeyedSubtree(
+                            key: ValueKey('home-$themeKey'),
+                            child: HomePage(
+                              state: widget.state,
+                              onCamera: openCamera,
+                              onOpenRecord: () => select(1),
+                              onOpenProgress: () => select(2),
+                            ),
                           ),
                         ),
                         _KeepAlivePage(
-                          child: RecordPage(
-                            state: widget.state,
-                            onCamera: openCamera,
+                          child: KeyedSubtree(
+                            key: ValueKey('record-$themeKey'),
+                            child: RecordPage(
+                              state: widget.state,
+                              onCamera: openCamera,
+                            ),
                           ),
                         ),
                         _KeepAlivePage(
-                          child: ProgressPage(state: widget.state),
+                          child: KeyedSubtree(
+                            key: ValueKey('progress-$themeKey'),
+                            child: ProgressPage(state: widget.state),
+                          ),
                         ),
                         _KeepAlivePage(
-                          child: SettingsPage(
-                            state: widget.state,
-                            cloud: widget.cloud,
+                          child: KeyedSubtree(
+                            key: ValueKey('settings-$themeKey'),
+                            child: SettingsPage(
+                              state: widget.state,
+                              cloud: widget.cloud,
+                            ),
                           ),
                         ),
                       ],
@@ -369,7 +396,7 @@ class _WebDownloadLinks extends StatelessWidget {
       children: [
         const HairLine(),
         const SizedBox(height: 16),
-        const Text(
+        Text(
           '手机版',
           style: TextStyle(
             fontSize: 14.5,
@@ -379,7 +406,7 @@ class _WebDownloadLinks extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 6),
-        const Text(
+        Text(
           'iPhone：在 Safari 里点「分享」，再点「添加到主屏幕」，或下载 IPA 自签安装。\n'
           'Android：下载 APK 安装。网页版无需下载也能继续使用。',
           style: TextStyle(
@@ -450,7 +477,7 @@ class _DownloadButton extends StatelessWidget {
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13.5,
                   fontWeight: FontWeight.w600,
                   color: AppColors.accentDeep,
@@ -540,14 +567,14 @@ class _FloatingTabBar extends StatelessWidget {
         Positioned.fill(
           child: ColoredBox(
             // 网页端没有背景模糊，改为不透明避免下层内容透出来发灰。
-            color: kIsWeb ? const Color(0xFF000000) : const Color(0xE6000000),
+            color: kIsWeb ? AppColors.tabBarWeb : AppColors.tabBar,
           ),
         ),
         Positioned.fill(
           child: DecoratedBox(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(height / 2),
-              border: Border.all(color: const Color(0x1FFFFFFF), width: 1),
+              border: Border.all(color: AppColors.line, width: 1),
             ),
           ),
         ),
@@ -560,7 +587,7 @@ class _FloatingTabBar extends StatelessWidget {
           top: inset,
           bottom: inset,
           width: itemWidth,
-          child: const _SelectionPill(),
+          child: _SelectionPill(),
         ),
         Row(
           children: [
@@ -583,15 +610,7 @@ class _FloatingTabBar extends StatelessWidget {
         height: height,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(height / 2),
-          boxShadow: kIsWeb
-              ? null
-              : const [
-                  BoxShadow(
-                    color: Color(0x80000000),
-                    blurRadius: 36,
-                    offset: Offset(0, 16),
-                  ),
-                ],
+          boxShadow: kIsWeb ? null : AppShadows.raised,
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(height / 2),
@@ -614,17 +633,9 @@ class _SelectionPill extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: const Color(0xFF1C1C1E),
+        color: AppColors.tabPill,
         borderRadius: BorderRadius.circular(999),
-        boxShadow: kIsWeb
-            ? null
-            : const [
-                BoxShadow(
-                  color: Color(0x66000000),
-                  blurRadius: 18,
-                  offset: Offset(0, 6),
-                ),
-              ],
+        boxShadow: kIsWeb ? null : AppShadows.thumb,
       ),
     );
   }
@@ -658,7 +669,7 @@ class _TabBarButton extends StatelessWidget {
             child: Icon(
               selected ? item.selectedIcon : item.icon,
               size: 20,
-              color: selected ? AppColors.ink : const Color(0x8CF5F5F7),
+              color: selected ? AppColors.ink : AppColors.secondary,
             ),
           ),
           const SizedBox(height: 3),
@@ -671,7 +682,7 @@ class _TabBarButton extends StatelessWidget {
               height: 1.1,
               fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
               letterSpacing: 0.1,
-              color: selected ? AppColors.ink : const Color(0x73F5F5F7),
+              color: selected ? AppColors.ink : AppColors.tertiary,
             ),
             child: Text(item.label),
           ),

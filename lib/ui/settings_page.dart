@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../app_state.dart';
+import '../app_theme.dart';
 import '../cloud_sync.dart';
 import '../export_service.dart' deferred as exporter;
 import '../models.dart';
@@ -66,7 +67,60 @@ class _SettingsPageState extends State<SettingsPage> {
           padding: const EdgeInsets.fromLTRB(20, 18, 18, 18),
           child: Row(
             children: [
-              const IconBadge(
+              IconBadge(
+                icon: CupertinoIcons.circle_lefthalf_fill,
+                color: AppColors.accentDeep,
+                background: AppColors.accentSoft,
+                size: 40,
+                iconSize: 18,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '外观',
+                      style: TextStyle(
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                    SizedBox(height: 3),
+                    Text(
+                      '暗色更沉稳，亮色是带一点米色的暖白',
+                      style: TextStyle(
+                        fontSize: 12,
+                        height: 1.4,
+                        color: AppColors.secondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              SizedBox(
+                width: 132,
+                child: PillSegmented<bool>(
+                  options: const [
+                    SegmentedOption(value: true, label: '暗色'),
+                    SegmentedOption(value: false, label: '亮色'),
+                  ],
+                  value: AppThemeController.instance.isDark,
+                  onChanged: (value) =>
+                      AppThemeController.instance.setDark(value),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        SurfaceCard(
+          padding: const EdgeInsets.fromLTRB(20, 18, 18, 18),
+          child: Row(
+            children: [
+              IconBadge(
                 icon: CupertinoIcons.gauge,
                 color: AppColors.accentDeep,
                 background: AppColors.accentSoft,
@@ -74,7 +128,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 iconSize: 18,
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -114,7 +168,7 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
         ),
         const SizedBox(height: 10),
-        const Padding(
+        Padding(
           padding: EdgeInsets.symmetric(horizontal: 4),
           child: Text(
             '记录仍以统一数据保存并参与云同步；切换只改变你看到的数字。',
@@ -140,10 +194,10 @@ class _SettingsPageState extends State<SettingsPage> {
           children: [
             GroupedRow(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 19),
-              leading: const IconBadge(
+              leading: IconBadge(
                 icon: CupertinoIcons.square_arrow_up,
                 color: AppColors.warm,
-                background: Color(0x1FD9A77A),
+                background: AppColors.warm.withValues(alpha: 0.12),
                 size: 40,
                 iconSize: 18,
               ),
@@ -154,10 +208,10 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             GroupedRow(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 19),
-              leading: const IconBadge(
+              leading: IconBadge(
                 icon: CupertinoIcons.doc_text,
                 color: AppColors.warm,
-                background: Color(0x1FD9A77A),
+                background: AppColors.warm.withValues(alpha: 0.12),
                 size: 40,
                 iconSize: 18,
               ),
@@ -169,7 +223,7 @@ class _SettingsPageState extends State<SettingsPage> {
           ],
         ),
         const SizedBox(height: 52),
-        const Center(
+        Center(
           child: Column(
             children: [
               Text(
@@ -231,7 +285,7 @@ class _ProfileCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const IconBadge(
+              IconBadge(
                 icon: CupertinoIcons.person_fill,
                 color: AppColors.accentDeep,
                 background: AppColors.accentSoft,
@@ -239,7 +293,7 @@ class _ProfileCard extends StatelessWidget {
                 iconSize: 21,
               ),
               const SizedBox(width: 14),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -263,7 +317,7 @@ class _ProfileCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(
+              Icon(
                 CupertinoIcons.chevron_right,
                 size: 14,
                 color: AppColors.tertiary,
@@ -282,7 +336,7 @@ class _ProfileCard extends StatelessWidget {
                 padding: const EdgeInsets.only(left: 6, bottom: 4),
                 child: Text(
                   unit.label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                     color: AppColors.secondary,
@@ -304,7 +358,7 @@ class _ProfileCard extends StatelessWidget {
           const SizedBox(height: 18),
           Text(
             '基础代谢约 ${formatCalories(bmr)} 大卡。按「${activityLabel(profile.activity)}」的活动量，每天大约消耗 ${formatCalories(tdee)} 大卡。',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13.5,
               height: 1.7,
               color: AppColors.secondary,
@@ -352,12 +406,12 @@ class _ProfileFact extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 11.5, color: AppColors.tertiary),
+          style: TextStyle(fontSize: 11.5, color: AppColors.tertiary),
         ),
         const SizedBox(height: 6),
         Text(
           value,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
             color: AppColors.ink,
@@ -551,7 +605,7 @@ class _ProfileSheetState extends State<ProfileSheet> {
             ],
           ),
           const SizedBox(height: 22),
-          const Text('生理性别', style: AppTextStyles.eyebrow),
+          Text('生理性别', style: AppTextStyles.eyebrow),
           const SizedBox(height: 10),
           PillSegmented<String>(
             options: const [
@@ -562,7 +616,7 @@ class _ProfileSheetState extends State<ProfileSheet> {
             onChanged: (value) => setState(() => sex = value),
           ),
           const SizedBox(height: 22),
-          const Text('日常活动', style: AppTextStyles.eyebrow),
+          Text('日常活动', style: AppTextStyles.eyebrow),
           const SizedBox(height: 10),
           Wrap(
             spacing: 8,
@@ -635,12 +689,12 @@ class _PreviewStat extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 10.5, color: AppColors.secondary),
+          style: TextStyle(fontSize: 10.5, color: AppColors.secondary),
         ),
         const SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
             color: AppColors.ink,
@@ -815,7 +869,7 @@ class _CloudSyncSheetState extends State<_CloudSyncSheet> {
                   const SizedBox(height: 10),
                   Text(
                     error!,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12.5,
                       height: 1.5,
                       color: AppColors.warning,
@@ -829,7 +883,7 @@ class _CloudSyncSheetState extends State<_CloudSyncSheet> {
                   onPressed: login,
                 ),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   '登录只保存在本机，不会影响本地记录。忘记账号密码请联系作者。',
                   style: TextStyle(
                     fontSize: 11.5,
@@ -851,7 +905,7 @@ class _CloudSyncSheetState extends State<_CloudSyncSheet> {
                 Center(
                   child: Pressable(
                     onTap: cloud.busy ? null : logout,
-                    child: const Padding(
+                    child: Padding(
                       padding: EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 12,
@@ -890,9 +944,9 @@ class _SyncPrompt extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.accentSoft,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0x2EFFFFFF)),
+        border: Border.all(color: AppColors.borderStrong),
       ),
-      child: const Row(
+      child: Row(
         children: [
           Icon(CupertinoIcons.lock, size: 16, color: AppColors.accentDeep),
           SizedBox(width: 10),
@@ -927,7 +981,7 @@ class _SyncStatus extends StatelessWidget {
         children: [
           Row(
             children: [
-              const IconBadge(
+              IconBadge(
                 icon: CupertinoIcons.cloud_fill,
                 color: AppColors.accentDeep,
                 background: AppColors.accentSoft,
@@ -941,7 +995,7 @@ class _SyncStatus extends StatelessWidget {
                   children: [
                     Text(
                       cloud.username ?? '已登录',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 15.5,
                         fontWeight: FontWeight.w600,
                         color: AppColors.ink,
@@ -952,7 +1006,7 @@ class _SyncStatus extends StatelessWidget {
                       lastSync == null
                           ? '尚未完成首次同步'
                           : '最后同步 ${DateFormat('M月d日 HH:mm').format(lastSync)}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         color: AppColors.secondary,
                       ),
@@ -974,7 +1028,7 @@ class _SyncStatus extends StatelessWidget {
             ),
             Text(
               '云端版本 ${cloud.revision} · 每次修改都会在后台自动上传',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11.5,
                 height: 1.5,
                 color: AppColors.tertiary,
@@ -998,12 +1052,12 @@ class _SyncLogs extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('同步日志', style: AppTextStyles.eyebrow),
+        Text('同步日志', style: AppTextStyles.eyebrow),
         const SizedBox(height: 10),
         SurfaceCard(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
           child: recent.isEmpty
-              ? const Padding(
+              ? Padding(
                   padding: EdgeInsets.symmetric(vertical: 6),
                   child: Text(
                     '还没有同步记录。',
@@ -1038,7 +1092,7 @@ class _SyncLogRow extends StatelessWidget {
           padding: const EdgeInsets.only(top: 1),
           child: Text(
             DateFormat('HH:mm:ss').format(log.time),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 10.5,
               color: AppColors.tertiary,
               fontFeatures: [FontFeature.tabularFigures()],

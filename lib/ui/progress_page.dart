@@ -134,7 +134,7 @@ class ProgressPage extends StatelessWidget {
               else
                 _WeightLog(state: state, entries: weights),
               if (weights.isNotEmpty)
-                const Padding(
+                Padding(
                   padding: EdgeInsets.fromLTRB(4, 14, 4, 0),
                   child: Text(
                     '轻点一条记录可以修改日期和数值，左滑删除。',
@@ -189,7 +189,7 @@ class _WeightCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Text(
+              Text(
                 '当前体重',
                 style: TextStyle(
                   fontSize: 13,
@@ -218,7 +218,7 @@ class _WeightCard extends StatelessWidget {
                 padding: const EdgeInsets.only(left: 7, bottom: 4),
                 child: Text(
                   unit.label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                     color: AppColors.secondary,
@@ -236,7 +236,7 @@ class _WeightCard extends StatelessWidget {
                   padding: const EdgeInsets.only(bottom: 5),
                   child: Text(
                     targetGap > 0 ? '距目标 ${unit.format(targetGap)}' : '已在目标之内',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12.5,
                       color: AppColors.secondary,
                     ),
@@ -249,7 +249,7 @@ class _WeightCard extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   '再记录一次体重，就能看到变化曲线。',
                   style: TextStyle(
                     fontSize: 13.5,
@@ -274,10 +274,7 @@ class _WeightCard extends StatelessWidget {
               children: [
                 Text(
                   DateFormat('M月d日').format(recent.first.date),
-                  style: const TextStyle(
-                    fontSize: 10.5,
-                    color: AppColors.tertiary,
-                  ),
+                  style: TextStyle(fontSize: 10.5, color: AppColors.tertiary),
                 ),
                 const Spacer(),
                 Row(
@@ -285,13 +282,13 @@ class _WeightCard extends StatelessWidget {
                     Container(
                       width: 4,
                       height: 4,
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: AppColors.accent,
                       ),
                     ),
                     const SizedBox(width: 5),
-                    const Text(
+                    Text(
                       '目标线',
                       style: TextStyle(
                         fontSize: 10.5,
@@ -303,10 +300,7 @@ class _WeightCard extends StatelessWidget {
                 const SizedBox(width: 14),
                 Text(
                   DateFormat('M月d日').format(recent.last.date),
-                  style: const TextStyle(
-                    fontSize: 10.5,
-                    color: AppColors.tertiary,
-                  ),
+                  style: TextStyle(fontSize: 10.5, color: AppColors.tertiary),
                 ),
               ],
             ),
@@ -350,14 +344,14 @@ class _WeightTextAction extends StatelessWidget {
             ],
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13.5,
                 fontWeight: FontWeight.w600,
                 color: AppColors.accentDeep,
               ),
             ),
             const SizedBox(width: 3),
-            const Icon(
+            Icon(
               CupertinoIcons.chevron_right,
               size: 11,
               color: AppColors.accentDeep,
@@ -432,7 +426,7 @@ class _PredictionCard extends StatelessWidget {
 
     return SurfaceCard(
       elevated: true,
-      borderColor: const Color(0x38FFFFFF),
+      borderColor: AppColors.borderStrong,
       padding: const EdgeInsets.fromLTRB(26, 24, 26, 24),
       child: Stack(
         children: [
@@ -440,7 +434,7 @@ class _PredictionCard extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 '减重预测',
                 style: TextStyle(
                   fontSize: 13,
@@ -451,11 +445,11 @@ class _PredictionCard extends StatelessWidget {
               ),
               const SizedBox(height: 18),
               if (reached)
-                const Text('已经到达目标', style: _predictionTitle)
+                Text('已经到达目标', style: _predictionTitle)
               else if (hasPrediction)
                 Text('约 $days 天后\n到达目标', style: _predictionTitle)
               else
-                const Text('再记录几天，\n就能看到预测', style: _predictionTitle),
+                Text('再记录几天，\n就能看到预测', style: _predictionTitle),
               const SizedBox(height: 14),
               Text(
                 reached
@@ -463,7 +457,7 @@ class _PredictionCard extends StatelessWidget {
                     : hasPrediction
                     ? '预计 ${DateFormat('yyyy年M月d日').format(targetDate!)} 前后达成。按过去 7 天有记录日子的日均缺口 ${formatCalories(deficit)} 大卡推算。'
                     : '连续记录几天饮食后，会按近期有记录日子的热量缺口，推算到达目标的日子。',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13.5,
                   height: 1.7,
                   color: AppColors.secondary,
@@ -475,7 +469,7 @@ class _PredictionCard extends StatelessWidget {
                   unit == WeightUnit.kilograms
                       ? '还需减掉约 ${unit.format(remaining)} · ${WeightUnit.jin.format(remaining)}'
                       : '还需减掉约 ${unit.format(remaining)}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                     color: AppColors.ink,
@@ -484,7 +478,7 @@ class _PredictionCard extends StatelessWidget {
                 ),
               ],
               const SizedBox(height: 14),
-              const Text(
+              Text(
                 '按每公斤脂肪约 7700 大卡估算，只用来观察长期趋势。',
                 style: TextStyle(
                   fontSize: 11,
@@ -500,7 +494,7 @@ class _PredictionCard extends StatelessWidget {
   }
 }
 
-const _predictionTitle = TextStyle(
+final _predictionTitle = TextStyle(
   fontSize: 28,
   height: 1.22,
   fontWeight: FontWeight.w700,
@@ -518,7 +512,7 @@ class _PredictionGlow extends StatelessWidget {
       height: 190,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: const Color(0x14FFFFFF), width: 26),
+        border: Border.all(color: AppColors.ring, width: 26),
       ),
     );
   }
@@ -572,7 +566,7 @@ class _BodyFatCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Text(
+              Text(
                 '体脂估算',
                 style: TextStyle(
                   fontSize: 13,
@@ -597,7 +591,7 @@ class _BodyFatCard extends StatelessWidget {
                 percent.toStringAsFixed(1),
                 style: AppTextStyles.numericLarge,
               ),
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(left: 2, bottom: 4),
                 child: Text(
                   '%',
@@ -632,7 +626,7 @@ class _BodyFatCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             '脂肪量约 ${unit.format(fatMass)} · 瘦体重约 ${unit.format(leanMass)}',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12.5,
               color: AppColors.secondary,
               fontFeatures: [FontFeature.tabularFigures()],
@@ -648,24 +642,18 @@ class _BodyFatCard extends StatelessWidget {
                   DateFormat(
                     'M月d日',
                   ).format(entries[entries.length - recent.length].date),
-                  style: const TextStyle(
-                    fontSize: 10.5,
-                    color: AppColors.tertiary,
-                  ),
+                  style: TextStyle(fontSize: 10.5, color: AppColors.tertiary),
                 ),
                 const Spacer(),
                 Text(
                   DateFormat('M月d日').format(entries.last.date),
-                  style: const TextStyle(
-                    fontSize: 10.5,
-                    color: AppColors.tertiary,
-                  ),
+                  style: TextStyle(fontSize: 10.5, color: AppColors.tertiary),
                 ),
               ],
             ),
           ] else ...[
             const SizedBox(height: 16),
-            const Text(
+            Text(
               '记录两次以上体重后，这里会显示体脂率的变化趋势。',
               style: TextStyle(
                 fontSize: 12.5,
@@ -675,7 +663,7 @@ class _BodyFatCard extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 14),
-          const Text(
+          Text(
             '按身高、年龄、性别和当前体重自动估算，只适合观察长期方向，不能替代体脂秤或医学检测。',
             style: TextStyle(
               fontSize: 11,
@@ -856,13 +844,13 @@ class _AiAdviceCardState extends State<_AiAdviceCard> {
         children: [
           Row(
             children: [
-              const Icon(
+              Icon(
                 CupertinoIcons.sparkles,
                 size: 15,
                 color: AppColors.accentDeep,
               ),
               const SizedBox(width: 7),
-              const Text(
+              Text(
                 'AI 建议',
                 style: TextStyle(
                   fontSize: 13,
@@ -872,7 +860,7 @@ class _AiAdviceCardState extends State<_AiAdviceCard> {
               ),
               const Spacer(),
               if (hasAdvice && !_loading)
-                const Tag(
+                Tag(
                   label: '已生成',
                   color: AppColors.accentDeep,
                   background: AppColors.accentSoft,
@@ -880,7 +868,7 @@ class _AiAdviceCardState extends State<_AiAdviceCard> {
             ],
           ),
           const SizedBox(height: 12),
-          const Text(
+          Text(
             '结合最近 30 天的体重和饮食记录，让 AI 给出一段简短的调整建议。',
             style: TextStyle(
               fontSize: 12.5,
@@ -896,11 +884,11 @@ class _AiAdviceCardState extends State<_AiAdviceCard> {
               decoration: BoxDecoration(
                 color: AppColors.accentSoft,
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: const Color(0x2EFFFFFF)),
+                border: Border.all(color: AppColors.borderStrong),
               ),
               child: Text(
                 _advice!,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   height: 1.8,
                   color: AppColors.ink,
@@ -912,7 +900,7 @@ class _AiAdviceCardState extends State<_AiAdviceCard> {
             const SizedBox(height: 14),
             Text(
               _error!,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12.5,
                 height: 1.6,
                 color: AppColors.warning,
@@ -929,7 +917,7 @@ class _AiAdviceCardState extends State<_AiAdviceCard> {
             onPressed: _canGenerate ? _generate : null,
           ),
           const SizedBox(height: 10),
-          const Text(
+          Text(
             '点击后会把资料、体重和饮食记录发送给 AI 服务，不会上传照片。建议仅供参考，不能替代医生或营养师。',
             style: TextStyle(
               fontSize: 11,
@@ -972,7 +960,7 @@ class _IntakeCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       '日均摄入',
                       style: TextStyle(
                         fontSize: 13,
@@ -982,7 +970,7 @@ class _IntakeCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
                     if (recordedDays == 0)
-                      const Text('—', style: AppTextStyles.numericCard)
+                      Text('—', style: AppTextStyles.numericCard)
                     else
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -993,7 +981,7 @@ class _IntakeCard extends StatelessWidget {
                             style: AppTextStyles.numericCard,
                           ),
                           const SizedBox(width: 5),
-                          const Text(
+                          Text(
                             '大卡',
                             style: TextStyle(
                               fontSize: 11,
@@ -1024,7 +1012,7 @@ class _IntakeCard extends StatelessWidget {
           ),
           Text(
             _sentence(),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               height: 1.7,
               color: AppColors.secondary,
@@ -1033,7 +1021,7 @@ class _IntakeCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             '只统计有饮食记录的日子，虚线是每天大约消耗的 ${formatCalories(tdee)} 大卡。',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11.5,
               height: 1.6,
               color: AppColors.tertiary,
@@ -1076,7 +1064,7 @@ class _BodyMetrics extends StatelessWidget {
         children: [
           Text(
             '基础代谢约 ${formatCalories(bmr)} 大卡。按「${activityLabel(profile.activity)}」的活动量，每天大约消耗 ${formatCalories(tdee)} 大卡。',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
               height: 1.75,
               color: AppColors.secondary,
@@ -1124,12 +1112,12 @@ class _ProfileFact extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 11.5, color: AppColors.tertiary),
+          style: TextStyle(fontSize: 11.5, color: AppColors.tertiary),
         ),
         const SizedBox(height: 6),
         Text(
           value,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
             color: AppColors.ink,
@@ -1172,8 +1160,8 @@ class _WeightLog extends StatelessWidget {
             background: Container(
               alignment: Alignment.centerRight,
               padding: const EdgeInsets.only(right: 22),
-              decoration: const BoxDecoration(color: AppColors.warning),
-              child: const Icon(
+              decoration: BoxDecoration(color: AppColors.warning),
+              child: Icon(
                 CupertinoIcons.delete,
                 color: AppColors.background,
                 size: 19,
@@ -1337,7 +1325,7 @@ class _WeightSheetState extends State<_WeightSheet> {
                   'yyyy年M月d日 EEEE',
                   'zh_CN',
                 ).format(selectedDate),
-                leading: const IconBadge(
+                leading: IconBadge(
                   icon: CupertinoIcons.calendar,
                   color: AppColors.accentDeep,
                   background: AppColors.accentSoft,
@@ -1365,7 +1353,7 @@ class _WeightSheetState extends State<_WeightSheet> {
             unit == WeightUnit.kilograms
                 ? '固定时间、相近状态测量，趋势会更有意义。'
                 : '当前按市斤显示，直接填写市斤数，例如 130.4 市斤等于 65.2 公斤。',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               height: 1.6,
               color: AppColors.tertiary,

@@ -86,7 +86,7 @@ class _ConverterPageState extends State<ConverterPage> {
                     children: [
                       const PageHeader(eyebrow: '对着营养成分表', title: '热量换算'),
                       const SizedBox(height: 14),
-                      const Text(
+                      Text(
                         '千焦换成大卡，也能把整包的热量一次算清。数字来自包装，换算只改变单位。',
                         style: TextStyle(
                           fontSize: 14.5,
@@ -177,7 +177,7 @@ class _ConverterPageState extends State<ConverterPage> {
                             : _packageDetail(),
                       ),
                       const SizedBox(height: 18),
-                      const Padding(
+                      Padding(
                         padding: EdgeInsets.symmetric(horizontal: 4),
                         child: Text(
                           '国内营养成分表通常使用千焦。换算只改变单位，不代表食物本身的热量。',
@@ -236,7 +236,7 @@ class _Field extends StatelessWidget {
           padding: const EdgeInsets.only(left: 4, bottom: 9),
           child: Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12.5,
               fontWeight: FontWeight.w600,
               color: AppColors.secondary,
@@ -283,7 +283,7 @@ class _QuickValue extends StatelessWidget {
           ),
           child: Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w500,
               color: AppColors.secondary,
@@ -310,7 +310,7 @@ class _ResultCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return SurfaceCard(
       elevated: true,
-      borderColor: const Color(0x38FFFFFF),
+      borderColor: AppColors.borderStrong,
       padding: const EdgeInsets.fromLTRB(26, 24, 26, 24),
       child: Stack(
         children: [
@@ -323,7 +323,7 @@ class _ResultCard extends StatelessWidget {
                 height: 180,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0x14FFFFFF), width: 24),
+                  border: Border.all(color: AppColors.ring, width: 24),
                 ),
               ),
             ),
@@ -335,7 +335,7 @@ class _ResultCard extends StatelessWidget {
                 children: [
                   Text(
                     label,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0.2,
@@ -343,7 +343,7 @@ class _ResultCard extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
-                  const Icon(
+                  Icon(
                     CupertinoIcons.bolt_fill,
                     size: 15,
                     color: AppColors.tertiary,
@@ -357,7 +357,7 @@ class _ResultCard extends StatelessWidget {
                 children: [
                   Text(
                     value == null ? '—' : formatCalories(value!),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 54,
                       height: 1,
                       fontWeight: FontWeight.w600,
@@ -367,7 +367,7 @@ class _ResultCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.only(bottom: 5),
                     child: Text(
                       '大卡',
@@ -383,7 +383,7 @@ class _ResultCard extends StatelessWidget {
               const SizedBox(height: 10),
               Text(
                 detail,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12.5,
                   height: 1.6,
                   color: AppColors.tertiary,

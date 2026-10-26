@@ -224,7 +224,7 @@ class _WeightImportSheetState extends State<WeightImportSheet> {
               const SizedBox(height: 12),
               Text(
                 scan!.reply,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   height: 1.6,
                   color: AppColors.tertiary,
@@ -257,7 +257,7 @@ class _WeightImportSheetState extends State<WeightImportSheet> {
                     ),
                     child: Text(
                       allSelected ? '取消全选' : '全选',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: AppColors.accentDeep,
@@ -314,7 +314,7 @@ class _WeightImportSheetState extends State<WeightImportSheet> {
             Center(
               child: Pressable(
                 onTap: busy ? null : () => pick(ImageSource.gallery),
-                child: const Padding(
+                child: Padding(
                   padding: EdgeInsets.symmetric(horizontal: 16, vertical: 11),
                   child: Text(
                     '换一张截图',
@@ -364,7 +364,7 @@ class _PickActions extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 14),
-        const Text(
+        Text(
           '照片只用于识别体重记录，不会保存到云端。导入的日期、数值和单位仍可继续手动修改。',
           style: TextStyle(
             fontSize: 11.5,
@@ -412,7 +412,7 @@ class _AnalyzingState extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const SizedBox.square(
+          SizedBox.square(
             dimension: 20,
             child: CupertinoActivityIndicator(
               radius: 9,
@@ -423,7 +423,7 @@ class _AnalyzingState extends StatelessWidget {
           Expanded(
             child: Text(
               hasImage ? '正在读取截图里的体重记录，通常需要 10–20 秒。' : '正在读取照片。',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13.5,
                 height: 1.55,
                 color: AppColors.secondary,
@@ -532,7 +532,7 @@ class _RecordRow extends StatelessWidget {
             ),
           ),
           child: selected
-              ? const Icon(
+              ? Icon(
                   CupertinoIcons.checkmark_alt,
                   size: 16,
                   color: AppColors.background,
@@ -596,7 +596,7 @@ class _RetakeHint extends StatelessWidget {
     return Center(
       child: Pressable(
         onTap: onRetake,
-        child: const Padding(
+        child: Padding(
           padding: EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           child: Text(
             '换一张截图',

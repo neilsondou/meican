@@ -36,6 +36,7 @@ class WeightTrendChart extends StatelessWidget {
                 entries: entries,
                 target: target,
                 progress: progress,
+                isDark: AppColors.isDark,
               ),
             ),
           );
@@ -50,11 +51,13 @@ class _WeightPainter extends CustomPainter {
     required this.entries,
     required this.target,
     required this.progress,
+    required this.isDark,
   });
 
   final List<WeightEntry> entries;
   final double target;
   final double progress;
+  final bool isDark;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -200,7 +203,8 @@ class _WeightPainter extends CustomPainter {
   bool shouldRepaint(covariant _WeightPainter oldDelegate) =>
       oldDelegate.progress != progress ||
       oldDelegate.target != target ||
-      oldDelegate.entries != entries;
+      oldDelegate.entries != entries ||
+      oldDelegate.isDark != isDark;
 }
 
 class BodyFatTrendChart extends StatelessWidget {
@@ -224,7 +228,11 @@ class BodyFatTrendChart extends StatelessWidget {
         builder: (context, progress, _) {
           return RepaintBoundary(
             child: CustomPaint(
-              painter: _BodyFatPainter(values: values, progress: progress),
+              painter: _BodyFatPainter(
+                values: values,
+                progress: progress,
+                isDark: AppColors.isDark,
+              ),
             ),
           );
         },
@@ -234,10 +242,15 @@ class BodyFatTrendChart extends StatelessWidget {
 }
 
 class _BodyFatPainter extends CustomPainter {
-  const _BodyFatPainter({required this.values, required this.progress});
+  const _BodyFatPainter({
+    required this.values,
+    required this.progress,
+    required this.isDark,
+  });
 
   final List<double> values;
   final double progress;
+  final bool isDark;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -331,7 +344,9 @@ class _BodyFatPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _BodyFatPainter oldDelegate) =>
-      oldDelegate.progress != progress || oldDelegate.values != values;
+      oldDelegate.progress != progress ||
+      oldDelegate.values != values ||
+      oldDelegate.isDark != isDark;
 }
 
 class DailyIntake {
@@ -380,6 +395,7 @@ class IntakeWeekChart extends StatelessWidget {
                   days: days,
                   tdee: tdee,
                   progress: progress,
+                  isDark: AppColors.isDark,
                 ),
               ),
             ),
@@ -421,11 +437,13 @@ class _IntakePainter extends CustomPainter {
     required this.days,
     required this.tdee,
     required this.progress,
+    required this.isDark,
   });
 
   final List<DailyIntake> days;
   final double tdee;
   final double progress;
+  final bool isDark;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -476,8 +494,8 @@ class _IntakePainter extends CustomPainter {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: today
-                ? const [Color(0xFFD5E2D2), AppColors.accent]
-                : const [Color(0xFF93A593), Color(0xFF6E826F)],
+                ? [AppColors.barTop, AppColors.barBottom]
+                : [AppColors.barMutedTop, AppColors.barMutedBottom],
           ).createShader(rect.outerRect),
       );
     }
@@ -501,5 +519,6 @@ class _IntakePainter extends CustomPainter {
   bool shouldRepaint(covariant _IntakePainter oldDelegate) =>
       oldDelegate.progress != progress ||
       oldDelegate.tdee != tdee ||
-      oldDelegate.days != days;
+      oldDelegate.days != days ||
+      oldDelegate.isDark != isDark;
 }

@@ -125,7 +125,7 @@ class HomePage extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(20, 18, 18, 18),
                 child: Row(
                   children: [
-                    const IconBadge(
+                    IconBadge(
                       icon: CupertinoIcons.arrow_left_right,
                       color: AppColors.accentDeep,
                       background: AppColors.accentSoft,
@@ -133,7 +133,7 @@ class HomePage extends StatelessWidget {
                       iconSize: 18,
                     ),
                     const SizedBox(width: 14),
-                    const Expanded(
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -159,7 +159,7 @@ class HomePage extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 10),
-                    const Icon(
+                    Icon(
                       CupertinoIcons.chevron_right,
                       size: 14,
                       color: AppColors.tertiary,
@@ -203,7 +203,7 @@ class _IntakeCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Text(
+              Text(
                 '今天已经吃了',
                 style: TextStyle(
                   fontSize: 13,
@@ -226,7 +226,7 @@ class _IntakeCard extends StatelessWidget {
             value: intake,
             style: AppTextStyles.numericHero,
             suffix: '大卡',
-            suffixStyle: const TextStyle(
+            suffixStyle: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w500,
               color: AppColors.secondary,
@@ -235,7 +235,7 @@ class _IntakeCard extends StatelessWidget {
           const SizedBox(height: 16),
           Text(
             _headline(intake, tdee, remaining, over),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14.5,
               height: 1.65,
               color: AppColors.secondary,
@@ -248,7 +248,7 @@ class _IntakeCard extends StatelessWidget {
             children: [
               Text(
                 '目标 ${formatCalories(tdee)} 大卡',
-                style: const TextStyle(fontSize: 12, color: AppColors.tertiary),
+                style: TextStyle(fontSize: 12, color: AppColors.tertiary),
               ),
               const Spacer(),
               Text(
@@ -299,7 +299,7 @@ class _IntakeBar extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            const ColoredBox(color: AppColors.surfaceMuted),
+            ColoredBox(color: AppColors.surfaceMuted),
             RepaintBoundary(
               child: TweenAnimationBuilder<double>(
                 tween: Tween(begin: 0, end: ratio),
@@ -315,8 +315,8 @@ class _IntakeBar extends StatelessWidget {
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: over
-                              ? const [Color(0xFFD9A77A), AppColors.warning]
-                              : const [Color(0xFF8FA98F), AppColors.accentDeep],
+                              ? [AppColors.warm, AppColors.warning]
+                              : [AppColors.barTop, AppColors.accentDeep],
                         ),
                       ),
                       child: const SizedBox.expand(),
@@ -357,7 +357,7 @@ class _GoalPaceCard extends StatelessWidget {
       onTap: onTap,
       padding: const EdgeInsets.fromLTRB(26, 24, 26, 26),
       elevated: true,
-      borderColor: const Color(0x38FFFFFF),
+      borderColor: AppColors.borderStrong,
       child: Stack(
         children: [
           const Positioned(right: -72, top: -92, child: _GoalRings()),
@@ -366,7 +366,7 @@ class _GoalPaceCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const Text(
+                  Text(
                     '目标进程',
                     style: TextStyle(
                       fontSize: 13,
@@ -376,7 +376,7 @@ class _GoalPaceCard extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
-                  const Icon(
+                  Icon(
                     CupertinoIcons.arrow_up_right,
                     size: 16,
                     color: AppColors.tertiary,
@@ -385,11 +385,11 @@ class _GoalPaceCard extends StatelessWidget {
               ),
               const SizedBox(height: 18),
               if (reached)
-                const Text('已经到达目标', style: _goalTitle)
+                Text('已经到达目标', style: _goalTitle)
               else if (hasPrediction)
                 Text('约 $days 天后\n到达目标', style: _goalTitle)
               else
-                const Text('再记录几天，\n就能看到预测', style: _goalTitle),
+                Text('再记录几天，\n就能看到预测', style: _goalTitle),
               const SizedBox(height: 14),
               Text(
                 _caption(
@@ -401,7 +401,7 @@ class _GoalPaceCard extends StatelessWidget {
                   target: target,
                   unit: unit,
                 ),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13.5,
                   height: 1.7,
                   color: AppColors.secondary,
@@ -415,7 +415,7 @@ class _GoalPaceCard extends StatelessWidget {
                       '当前 ${unit.format(current)} · 目标 ${unit.format(target)}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12.5,
                         color: AppColors.tertiary,
                         fontFeatures: [FontFeature.tabularFigures()],
@@ -423,7 +423,7 @@ class _GoalPaceCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  const Text(
+                  Text(
                     '看趋势',
                     style: TextStyle(
                       fontSize: 12.5,
@@ -432,7 +432,7 @@ class _GoalPaceCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 4),
-                  const Icon(
+                  Icon(
                     CupertinoIcons.chevron_right,
                     size: 11,
                     color: AppColors.tertiary,
@@ -469,7 +469,7 @@ class _GoalPaceCard extends StatelessWidget {
   }
 }
 
-const _goalTitle = TextStyle(
+final _goalTitle = TextStyle(
   fontSize: 28,
   height: 1.22,
   fontWeight: FontWeight.w700,
@@ -487,7 +487,7 @@ class _GoalRings extends StatelessWidget {
       height: 190,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: const Color(0x14FFFFFF), width: 26),
+        border: Border.all(color: AppColors.ring, width: 26),
       ),
     );
   }
